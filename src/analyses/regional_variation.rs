@@ -11,6 +11,7 @@ use crate::{
 pub struct RegionalVariation {
     order: Option<String>,
     window_size: usize,
+    windows: Option<String>,
     cache: OnceCell<Vec<(String, Vec<(Variation, usize, usize)>)>>,
 }
 
@@ -99,10 +100,11 @@ impl MatrixBasedAnalysis for RegionalVariation {
 }
 
 impl RegionalVariation {
-    pub fn new(window_size: usize, order: Option<String>) -> Self {
+    pub fn new(window_size: usize, order: Option<String>, windows: Option<String>) -> Self {
         Self {
             order,
             window_size,
+            windows,
             cache: OnceCell::new(),
         }
     }
@@ -119,7 +121,7 @@ impl RegionalVariation {
     ) -> &Vec<(String, Vec<(Variation, usize, usize)>)> {
         self.cache.get_or_init(|| {
             matrix
-                .get_regional_hists(self.window_size, self.window_size)
+                .get_regional_hists(self.window_size, self.window_size, self.windows.as_deref())
                 .map(|(r, i)| {
                     (
                         r,

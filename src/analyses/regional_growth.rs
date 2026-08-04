@@ -19,6 +19,7 @@ use crate::{
 pub struct RegionalGrowth {
     order: Option<String>,
     window_size: usize,
+    windows: Option<String>,
     cache: OnceCell<Vec<(String, Vec<(Growth, usize, usize)>)>>,
 }
 
@@ -107,10 +108,11 @@ impl MatrixBasedAnalysis for RegionalGrowth {
 }
 
 impl RegionalGrowth {
-    pub fn new(window_size: usize, order: Option<String>) -> Self {
+    pub fn new(window_size: usize, order: Option<String>, windows: Option<String>) -> Self {
         Self {
             order,
             window_size,
+            windows,
             cache: OnceCell::new(),
         }
     }
@@ -126,8 +128,9 @@ impl RegionalGrowth {
         matrix: &CoverageMatrix,
     ) -> &Vec<(String, Vec<(Growth, usize, usize)>)> {
         self.cache.get_or_init(|| {
-            matrix
-                .get_regional_hists(self.window_size, self.window_size)
+            let mut error_counter = 0;
+            let result = matrix
+                .get_regional_hists(self.window_size, self.window_size, self.windows.as_deref())
                 .map(|(r, i)| {
                     let windows = i
                         .filter_map(|(start, end, hist)| {
@@ -137,14 +140,8 @@ impl RegionalGrowth {
                             let result = calc_growth_predictions(&hist);
                             match result {
                                 Ok((d2, d3, d5)) => Some((Growth(d2, d3, d5), start, end)),
-                                Err(e) => {
-                                    log::warn!(
-                                        "Could not fit window {}:{}-{} because of {}",
-                                        r,
-                                        start,
-                                        end,
-                                        e.to_string()
-                                    );
+                                Err(_) => {
+                                    error_counter += 1;
                                     None
                                 }
                             }
@@ -152,7 +149,11 @@ impl RegionalGrowth {
                         .collect::<Vec<(Growth, usize, usize)>>();
                     (r, windows)
                 })
-                .collect::<Vec<_>>()
+                .collect::<Vec<_>>();
+            if error_counter > 0 {
+                log::warn!("Had problems in the fitting of {} windows", error_counter);
+            }
+            result
         })
     }
 }

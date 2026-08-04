@@ -488,14 +488,14 @@ pub fn get_edge_windows(
     let ref_windows: Vec<Window> =
         cover_windows_with_reference_nodes(window_ranges, ref_nodes, node_lens, contig_start);
 
-    if true {
-        ref_windows.iter().for_each(|(v, _s, _e)| {
-            eprintln!("Nodes: {}", v.len());
-            //if v.len() == 1 {
-            //    eprintln!("S {}-{} contains only a single reference node", s, e);
-            //}
-        });
-    }
+    // if true {
+    //     ref_windows.iter().for_each(|(v, _s, _e)| {
+    //         eprintln!("Nodes: {}", v.len());
+    //         //if v.len() == 1 {
+    //         //    eprintln!("S {}-{} contains only a single reference node", s, e);
+    //         //}
+    //     });
+    // }
 
     // If the flag is set merge windows that are inside the same window
     let ref_windows = if should_merge_small_windows {

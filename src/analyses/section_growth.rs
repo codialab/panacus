@@ -434,17 +434,4 @@ impl Hist3D {
 
         pangrowth
     }
-
-    pub fn to_tsv(&self) {
-        eprintln!("");
-        eprintln!("");
-        for i in 0..self.coverage.len() {
-            for j in 0..self.coverage[i].len() - 1 {
-                eprint!("{}\t", self.coverage[i][j]);
-            }
-            eprintln!("{}", self.coverage[i][self.coverage[i].len() - 1]);
-        }
-        eprintln!("");
-        eprintln!("");
-    }
 }

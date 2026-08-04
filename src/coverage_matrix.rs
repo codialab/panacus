@@ -1,4 +1,8 @@
-use std::collections::HashMap;
+use std::{
+    collections::HashMap,
+    fs::File,
+    io::{BufRead, BufReader},
+};
 
 use itertools::{Itertools, MinMaxResult};
 
@@ -8,6 +12,8 @@ use crate::{
     hist::Hist,
     util::{ItemTable, Threshold},
 };
+
+type Buckets = HashMap<usize, Vec<(usize, usize)>>;
 
 #[derive(Debug)]
 pub struct CoverageMatrix {
@@ -98,49 +104,191 @@ impl CoverageMatrix {
         hist
     }
 
+    fn get_number_of_windows(
+        min: usize,
+        max: usize,
+        window_size: usize,
+        slide_step: usize,
+    ) -> usize {
+        if max == min + 1 {
+            1
+        } else {
+            ((max - window_size - min + 1) as f64 / slide_step as f64).ceil() as usize + 1
+        }
+    }
+
+    fn get_feature_buckets(
+        &self,
+        ref_id: usize,
+        window_size: usize,
+        slide_step: usize,
+    ) -> (usize, Vec<Vec<usize>>) {
+        let (min, mut max) = match self.feature_positions.get_pos_iter_ref_id(ref_id).minmax() {
+            MinMaxResult::NoElements => unimplemented!("Should return empty iterator"),
+            MinMaxResult::OneElement(x) => (x, x + 1),
+            MinMaxResult::MinMax(min, max) => (min, max),
+        };
+        if max == min {
+            max += 1;
+        }
+        let number_of_windows = Self::get_number_of_windows(min, max, window_size, slide_step);
+
+        let mut feature_buckets: Vec<Vec<usize>> = vec![Vec::new(); number_of_windows];
+        for (feature_idx, position) in self.feature_positions.get_idpos_iter_ref_id(ref_id) {
+            let start_window =
+                ((position - window_size - min + 1) as f64 / slide_step as f64).ceil() as usize;
+            let end_window = ((position - min) as f64 / slide_step as f64).floor() as usize;
+            for window in start_window..=end_window {
+                feature_buckets[window].push(feature_idx);
+            }
+        }
+        (min, feature_buckets)
+    }
+
+    // Looks at all the features and sorts them into buckets based on the buckets data structure
+    fn get_feature_buckets_for_given_buckets(
+        &self,
+        ref_id: usize,
+        buckets: &Buckets,
+    ) -> Option<(usize, Vec<Vec<usize>>)> {
+        let bucket = buckets.get(&ref_id)?;
+        let mut feature_buckets: Vec<Vec<usize>> = vec![Vec::new(); bucket.len()];
+        for (feature_idx, position) in self.feature_positions.get_idpos_iter_ref_id(ref_id) {
+            // This is the first window to definitely not contain the position, so:
+            // [0, last_window_idx) is our valid interval
+            let last_window_idx = bucket.partition_point(|w| w.0 <= position);
+
+            let mut first_window_idx = if last_window_idx > 0 {
+                last_window_idx - 1
+            } else {
+                last_window_idx
+            };
+
+            // Step back until the end coordinate is before our position
+            while first_window_idx > 0 && bucket[first_window_idx].1 >= position {
+                first_window_idx -= 1;
+            }
+            // If we went outside, we need to step back in
+            if bucket[first_window_idx].1 < position {
+                first_window_idx += 1;
+            }
+
+            // Our valid interval is now [first_window_idx, last_window_idx)
+            for window in first_window_idx..last_window_idx {
+                feature_buckets[window].push(feature_idx);
+            }
+        }
+        Some((0, feature_buckets))
+    }
+
+    // Opens a bed file and reads it into the Buckets data structure
+    fn get_buckets_from_bucket_file(&self, file_path: &str) -> Buckets {
+        let file = match File::open(file_path) {
+            Ok(f) => f,
+            Err(e) => {
+                log::error!("Could not open file {} ({})", file_path, e.to_string());
+                return HashMap::new();
+            }
+        };
+        let reader = BufReader::new(file);
+        let reference_lookup: HashMap<&str, usize> = self
+            .feature_positions
+            .references
+            .iter()
+            .enumerate()
+            .map(|(id, ref_name)| (&ref_name[..], id))
+            .collect();
+        let mut buckets: Buckets = HashMap::new();
+        for line in reader.lines() {
+            let line = match line {
+                Ok(l) => l,
+                Err(e) => {
+                    log::error!(
+                        "Could not read line in file {} ({})",
+                        file_path,
+                        e.to_string()
+                    );
+                    continue;
+                }
+            };
+            let mut iter = line.split("\t");
+            let (Some(reference), Some(start), Some(end), None) =
+                (iter.next(), iter.next(), iter.next(), iter.next())
+            else {
+                log::error!(
+                    "Line {} of file {} does not contain exactly three tab-separated fields",
+                    line,
+                    file_path
+                );
+                continue;
+            };
+            let Some(ref_id) = reference_lookup.get(reference) else {
+                log::error!(
+                    "Reference {} used inside file {} is not part of the reference of the input file",
+                    reference,
+                    file_path
+                );
+                continue;
+            };
+            let (Ok(start), Ok(end)) = (start.parse::<usize>(), end.parse::<usize>()) else {
+                log::error!("Start and/or end coordinates ({}, {}) in line {} in file {} are not positive integers", start, end, line, file_path);
+                continue;
+            };
+            buckets.entry(*ref_id).or_default().push((start, end));
+        }
+
+        // Sort the windows
+        // Since sorting is implemented for tuples, Rust correctly uses start
+        // as the first priority and then end
+        for (_, windows) in buckets.iter_mut() {
+            windows.sort_unstable();
+        }
+        buckets
+    }
+
     /// Takes a window size and by what number that window should step forward (often the same number)
     /// Returns an iterator over references by name and all of the starts, ends and hists for the reference
     pub fn get_regional_hists(
         &self,
         window_size: usize,
         slide_step: usize,
+        window_file: Option<&str>,
     ) -> impl Iterator<Item = (String, impl Iterator<Item = (usize, usize, Hist)> + '_)> + '_ {
-        let mut all_references_buckets: Vec<(String, usize, Vec<Vec<usize>>)> = Vec::new();
+        let bed_buckets: Option<HashMap<usize, Vec<(usize, usize)>>> =
+            window_file.map(|file_path| self.get_buckets_from_bucket_file(&file_path));
+        let mut all_references_buckets: Vec<(String, Vec<(usize, usize, Vec<usize>)>)> = Vec::new();
         for (ref_id, reference) in self.feature_positions.references.iter().enumerate() {
-            let (min, mut max) = match self.feature_positions.get_pos_iter_ref_id(ref_id).minmax() {
-                MinMaxResult::NoElements => unimplemented!("Should return empty iterator"),
-                MinMaxResult::OneElement(x) => (x, x + 1),
-                MinMaxResult::MinMax(min, max) => (min, max),
-            };
-            if max == min {
-                max += 1;
-            }
-            let number_of_windows = if max == min + 1 {
-                1
-            } else {
-                ((max - window_size - min + 1) as f64 / slide_step as f64).ceil() as usize + 1
-            };
-
-            let mut feature_buckets: Vec<Vec<usize>> = vec![Vec::new(); number_of_windows];
-            for (feature_idx, position) in self.feature_positions.get_idpos_iter_ref_id(ref_id) {
-                let start_window =
-                    ((position - window_size - min + 1) as f64 / slide_step as f64).ceil() as usize;
-                let end_window = ((position - min) as f64 / slide_step as f64).floor() as usize;
-                for window in start_window..=end_window {
-                    feature_buckets[window].push(feature_idx);
+            let (min, feature_buckets) = match bed_buckets.as_ref() {
+                Some(b) => {
+                    if let Some(res) = self.get_feature_buckets_for_given_buckets(ref_id, b) {
+                        res
+                    } else {
+                        continue;
+                    }
                 }
-            }
-            all_references_buckets.push((reference.to_string(), min, feature_buckets));
+                None => self.get_feature_buckets(ref_id, window_size, slide_step),
+            };
+            let annotated_feature_buckets: Vec<(usize, usize, Vec<usize>)> = feature_buckets
+                .into_iter()
+                .enumerate()
+                .map(|(idx, bucket)| {
+                    let (start, end) = if let Some(bed_buckets) = bed_buckets.as_ref() {
+                        bed_buckets[&ref_id][idx]
+                    } else {
+                        (min + idx * slide_step, min + idx * slide_step + window_size)
+                    };
+                    (start, end, bucket)
+                })
+                .collect();
+            all_references_buckets.push((reference.to_string(), annotated_feature_buckets));
         }
         all_references_buckets
             .into_iter()
-            .map(move |(reference, min, buckets)| {
+            .map(move |(reference, buckets)| {
                 (
                     reference,
-                    buckets.into_iter().enumerate().map(move |(idx, bucket)| {
+                    buckets.into_iter().map(move |(start, end, bucket)| {
                         let hist = self.get_hist_for_features(&bucket);
-                        let start = min + idx * slide_step;
-                        let end = min + idx * slide_step + window_size;
                         (start, end, hist)
                     }),
                 )
@@ -483,6 +631,9 @@ impl Positions {
         }
     }
 
+    /// Gets an iterator over tuples with feature index and position
+    /// for all features that are part of the reference with the given
+    /// id.
     pub fn get_idpos_iter_ref_id(
         &self,
         ref_id: usize,

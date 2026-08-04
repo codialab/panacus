@@ -104,7 +104,7 @@ impl Hist3D {
         hist_aux: &ThresholdContainer,
         insert_zero: bool,
     ) -> Vec<Vec<f64>> {
-        self.to_tsv();
+        // self.to_tsv();
         let mut growths: Vec<Vec<f64>> = hist_aux
             .coverage
             .par_iter()

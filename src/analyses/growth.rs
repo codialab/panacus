@@ -107,7 +107,7 @@ impl HistBasedAnalysis for Growth {
             "pan-growth-{}",
             hist.get_run_id()
                 .to_lowercase()
-                .replace(&[' ', '|', '\\'], "-")
+                .replace([' ', '|', '\\'], "-")
         );
         let k = hist.get_feature_type();
         let growths = self.growths.as_ref().unwrap();

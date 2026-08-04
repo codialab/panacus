@@ -401,7 +401,7 @@ fn get_walk_segment_ids(
                     grammar,
                 );
                 for segment in &segment_id {
-                    bp_len += graph_storage.node_len(&segment);
+                    bp_len += graph_storage.node_len(segment);
                 }
                 segment_ids.extend(segment_id);
                 // move curr_pos forward (after next comma)
@@ -484,12 +484,12 @@ pub fn update_tables(
         "checking inclusion/exclusion criteria on {} nodes..",
         path.len()
     );
-    if path.len() == 0 {
+    if path.is_empty() {
         return (included, included_bp);
     }
 
     for (sid, o) in &path {
-        let l = graph_storage.node_len(&sid) as usize;
+        let l = graph_storage.node_len(sid) as usize;
 
         // this implementation of include coords for bps is *not exact* as illustrated by the
         // following scenario:
@@ -520,11 +520,7 @@ pub fn update_tables(
         let mut stop_here = false;
         while i < include_coords.len() && include_coords[i].0 < p + l && !stop_here {
             if include_coords[i].1 > p {
-                let mut a = if include_coords[i].0 > p {
-                    include_coords[i].0 - p
-                } else {
-                    0
-                };
+                let mut a = include_coords[i].0.saturating_sub(p);
                 let mut b = if include_coords[i].1 < p + l {
                     // advance to the next interval
                     i += 1;
@@ -565,11 +561,7 @@ pub fn update_tables(
         let mut stop_here = false;
         while j < exclude_coords.len() && exclude_coords[j].0 < p + l && !stop_here {
             if exclude_coords[j].1 > p {
-                let mut a = if exclude_coords[j].0 > p {
-                    exclude_coords[j].0 - p
-                } else {
-                    0
-                };
+                let mut a = exclude_coords[j].0.saturating_sub(p);
                 let mut b = if exclude_coords[j].1 < p + l {
                     // advance to the next interval for the next iteration
                     j += 1;
@@ -589,7 +581,7 @@ pub fn update_tables(
                         map.activate_n_annotate(*sid, l, a, b)
                             .expect("this error should never occur");
                     } else {
-                        map.activate(&sid);
+                        map.activate(sid);
                     }
                     excluded += 1;
                 }
@@ -802,8 +794,7 @@ pub fn parse_path_seq_to_item_vec(
 
     log::debug!("..done");
 
-    let segment_ids = segment_ids.into_iter().concat();
-    segment_ids
+    segment_ids.into_iter().concat()
 }
 
 fn get_segment_id(node: &[u8], graph_storage: &GraphStorage) -> ItemId {

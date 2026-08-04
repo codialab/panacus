@@ -38,22 +38,12 @@ impl FileFormatParser for VcfParser {
     }
 }
 
+#[derive(Default)]
 struct VcfStats {
     num_samples: usize,
     num_variants: usize,
     num_alleles: usize,
     num_singletons: usize,
-}
-
-impl Default for VcfStats {
-    fn default() -> Self {
-        Self {
-            num_samples: 0,
-            num_variants: 0,
-            num_alleles: 0,
-            num_singletons: 0,
-        }
-    }
 }
 
 impl VcfStats {
@@ -357,7 +347,7 @@ impl VcfParser {
         line: &'a str,
         process_samples: impl FnOnce(SplitWhitespace<'a>, usize, usize) -> Vec<T>,
     ) -> Result<Vec<Variant<'a, T>>> {
-        let mut fields = line.trim().split_whitespace();
+        let mut fields = line.split_whitespace();
         let chrom = fields
             .next()
             .ok_or_else(|| anyhow::anyhow!("Variant needs chrom field!"))?;
@@ -397,7 +387,7 @@ impl VcfParser {
         let values = process_samples(fields, num_alts, genotype_position);
         Ok(alt_lengths
             .into_iter()
-            .zip(values.into_iter())
+            .zip(values)
             .map(|(alt_length, value)| Variant {
                 chrom,
                 pos,

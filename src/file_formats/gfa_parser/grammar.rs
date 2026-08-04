@@ -269,7 +269,7 @@ impl Grammar {
                                             .iter()
                                             .copied()
                                             .zip(self.get_orientations(current_id).iter().copied())
-                                            .map(|x| DecompOp::Element(x))
+                                            .map(DecompOp::Element)
                                             .rev(),
                                     );
                                 }
@@ -296,7 +296,7 @@ impl Grammar {
                         if rule_len > 0 && rule_len <= MAX_CACHE_LEN {
                             let (node_slice, orientation_slice): (Vec<ItemId>, Vec<Orientation>) =
                                 match is_forward {
-                                    true => sids[output_start..].iter().map(|x| *x).unzip(),
+                                    true => sids[output_start..].iter().copied().unzip(),
                                     // If we put the reverse rule into sids, put the forward rule in the cache
                                     false => sids[output_start..]
                                         .iter()
@@ -381,7 +381,7 @@ impl Grammar {
 
         raw_rx.into_iter().par_bridge().for_each(|chunk_bytes| {
             for line in chunk_bytes.split(|&b| b == b'\n') {
-                if !line.starts_with(&[b'Q']) {
+                if !line.starts_with(b"Q") {
                     continue;
                 }
                 let mut fields = line.split(|&c| c == b'\t').skip(1);

@@ -9,6 +9,12 @@ pub struct SparseMatrix {
     c: Vec<GroupSize>,
 }
 
+impl Default for SparseMatrix {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SparseMatrix {
     pub fn new() -> Self {
         Self {

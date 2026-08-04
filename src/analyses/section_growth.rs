@@ -39,7 +39,7 @@ impl MatrixBasedAnalysis for SectionGrowth {
             std::env::args().collect::<Vec<String>>().join(" ")
         ));
 
-        res.push_str(&format!("panacus\tsection-growth\n"));
+        res.push_str("panacus\tsection-growth\n");
         res.push_str(&format!("count\t{}\n", matrix.get_feature_type()));
 
         res.push_str("coverage");
@@ -50,7 +50,7 @@ impl MatrixBasedAnalysis for SectionGrowth {
         for q in inner.thresholds.quorum.iter() {
             res.push_str(&format!("\t{}", q.get_string()));
         }
-        res.push_str("\n");
+        res.push('\n');
 
         let mut section_index = 0;
         for idx in 0..inner.growths[0].len() {
@@ -63,7 +63,7 @@ impl MatrixBasedAnalysis for SectionGrowth {
             for j in 0..inner.thresholds.coverage.len() {
                 res.push_str(&format!("\t{}", inner.growths[j][idx]));
             }
-            res.push_str("\n");
+            res.push('\n');
         }
         Ok(res)
     }
@@ -170,13 +170,13 @@ impl SectionGrowth {
             let growths = hist.calc_all_growths(&thresholds, false);
             full_growths = full_growths
                 .into_iter()
-                .zip(growths.into_iter())
+                .zip(growths)
                 .map(|(mut full_growth, growth)| {
-                    full_growth.extend(growth.into_iter());
+                    full_growth.extend(growth);
                     full_growth
                 })
                 .collect();
-            path_collection.extend(paths.into_iter());
+            path_collection.extend(paths);
         }
         full_growths
     }
@@ -192,10 +192,8 @@ impl SectionGrowth {
             quorum: q,
         };
         // let (q0_thresholds, other_thresholds) = Self::split_thresholds(&thresholds);
-        let other_growths = self.get_growths_for_c_q(c, thresholds, matrix);
-        let full_growths = other_growths;
 
-        full_growths
+        self.get_growths_for_c_q(c, thresholds, matrix)
     }
 
     fn get_sections(&mut self, matrix: &CoverageMatrix) -> anyhow::Result<Vec<(String, usize)>> {
@@ -203,7 +201,7 @@ impl SectionGrowth {
         let reader = BufReader::new(sections_file);
         for line in reader.lines() {
             let line = line?;
-            let fields: Vec<_> = line.trim().split_whitespace().collect();
+            let fields: Vec<_> = line.split_whitespace().collect();
             assert_eq!(fields.len(), 2, "Sections file can only have two columns");
             let section = fields[1].to_owned();
             if !self.section_order.contains(&section) {
@@ -215,7 +213,7 @@ impl SectionGrowth {
                 groups
                     .iter()
                     .position(|g| g == fields[0])
-                    .expect(&format!("Group {} is not a group", fields[0])),
+                    .unwrap_or_else(|| panic!("Group {} is not a group", fields[0])),
             );
         }
 
@@ -251,8 +249,8 @@ impl SectionGrowth {
         for (c, qs) in coverage_quorums.into_iter() {
             let c = Threshold::Absolute(c);
             let new_thresholds: Vec<(Threshold, Threshold)> = qs.iter().map(|q| (c, *q)).collect();
-            thresholds_sorted.extend(new_thresholds.into_iter());
-            full_growths.extend(self.get_growths_for_coverage(c, qs, matrix).into_iter());
+            thresholds_sorted.extend(new_thresholds);
+            full_growths.extend(self.get_growths_for_coverage(c, qs, matrix));
         }
         let (coverage_sorted, quorum_sorted): (Vec<_>, Vec<_>) =
             thresholds_sorted.into_iter().unzip();
@@ -348,16 +346,16 @@ impl Hist3D {
         for (i, a_cov) in a.iter().enumerate() {
             let b_cov = b[i];
             if i != 0 {
-                if *a_cov as usize >= hist.len() {
+                if *a_cov >= hist.len() {
                     log::warn!("coverage {} of item {} in Abacus a exceeds the number of groups {}, it'll be ignored in the count", a_cov, i, a_max_coverage);
                     continue;
                 }
-                if b_cov as usize >= hist[0].len() {
+                if b_cov >= hist[0].len() {
                     log::warn!("coverage {} of item {} in Abacus b exceeds the number of groups {}, it'll be ignored in the count", b_cov, i, b_max_coverage);
                     continue;
                 }
             }
-            hist[*a_cov as usize][b_cov as usize] += matrix.get_feature_lengths()[i] as usize;
+            hist[*a_cov][b_cov] += matrix.get_feature_lengths()[i];
         }
 
         hist

@@ -44,10 +44,10 @@ impl MatrixBasedAnalysis for NodeDistribution {
             matrix
                 .get_run_id()
                 .to_lowercase()
-                .replace(&[' ', '|', '\\'], "-")
+                .replace([' ', '|', '\\'], "-")
         );
         let tab = vec![AnalysisSection {
-            id: format!("{}-{}", id_prefix, CountType::Node.to_string()),
+            id: format!("{}-{}", id_prefix, CountType::Node),
             analysis: "Node distribution".to_string(),
             table: Some(table),
             run_name: matrix.get_run_name().to_owned(),
@@ -85,10 +85,10 @@ impl NodeDistribution {
         let points: Vec<(String, u32, f64)> = multizip((
             (0..node_lens.len())
                 .into_iter()
-                .map(|id| (&node_names[id]).to_string())
+                .map(|id| node_names[id].to_string())
                 .collect::<Vec<String>>(),
-            countables.into_iter().copied().map(|x| x as u32),
-            node_lens.into_iter().copied(),
+            countables.iter().copied().map(|x| x as u32),
+            node_lens.iter().copied(),
         ))
         .collect();
         let bins = Bin::hexbin(&points, 15, 9);

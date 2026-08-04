@@ -43,7 +43,7 @@ impl HistBasedAnalysis for Hist {
             "cov-hist-{}",
             hist.get_run_id()
                 .to_lowercase()
-                .replace(&[' ', '|', '\\'], "-")
+                .replace([' ', '|', '\\'], "-")
         );
         let histogram_tabs = AnalysisSection {
             id: format!("{id_prefix}-{}", hist.get_feature_type()),
@@ -66,6 +66,12 @@ impl HistBasedAnalysis for Hist {
             plot_downloads: get_default_plot_downloads(),
         };
         Ok(vec![histogram_tabs])
+    }
+}
+
+impl Default for Hist {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

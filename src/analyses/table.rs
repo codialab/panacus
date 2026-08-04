@@ -24,11 +24,11 @@ impl MatrixBasedAnalysis for Table {
             string.push_str("\ttotal");
         } else {
             for path_name in &order {
-                string.push_str("\t");
-                string.push_str(&path_name);
+                string.push('\t');
+                string.push_str(path_name);
             }
         }
-        string.push_str("\n");
+        string.push('\n');
         for i in 0..matrix.get_feature_count() {
             string.push_str(matrix.get_feature_name(i));
             if self.total {
@@ -36,11 +36,11 @@ impl MatrixBasedAnalysis for Table {
                 string.push_str(&format!("\t{}", count));
             } else {
                 for value in matrix.get_counts_for_feature_in_order(i, &order) {
-                    string.push_str("\t");
+                    string.push('\t');
                     string.push_str(&format!("{}", value));
                 }
             }
-            string.push_str("\n");
+            string.push('\n');
         }
         Ok(string)
     }

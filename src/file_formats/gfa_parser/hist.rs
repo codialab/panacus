@@ -173,16 +173,16 @@ impl Hist3D {
     }
 
     pub fn to_tsv(&self) {
-        eprintln!("");
-        eprintln!("");
+        eprintln!();
+        eprintln!();
         for i in 0..self.coverage.len() {
             for j in 0..self.coverage[i].len() - 1 {
                 eprint!("{}\t", self.coverage[i][j]);
             }
             eprintln!("{}", self.coverage[i][self.coverage[i].len() - 1]);
         }
-        eprintln!("");
-        eprintln!("");
+        eprintln!();
+        eprintln!();
     }
 }
 
@@ -360,7 +360,7 @@ impl ThresholdContainer {
             })
             .collect();
         index_by_coverage.sort_by(|(c1, _), (c2, _)| c1.partial_cmp(c2).unwrap());
-        index_by_coverage.get(0).map(|(_, i)| *i)
+        index_by_coverage.first().map(|(_, i)| *i)
     }
 }
 

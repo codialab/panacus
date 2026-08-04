@@ -89,19 +89,19 @@ impl MatrixBasedAnalysis for OrderedHistgrowth {
             matrix
                 .get_run_id()
                 .to_lowercase()
-                .replace(&[' ', '|', '\\'], "-")
+                .replace([' ', '|', '\\'], "-")
         );
         let labels = matrix.get_path_names().clone();
         let count = matrix.get_feature_type();
         let growth_tabs = vec![AnalysisSection {
-            id: format!("{id_prefix}"),
+            id: id_prefix.to_string(),
             analysis: "Ordered Growth".to_string(),
             run_name: matrix.get_run_name().to_owned(),
             run_id: matrix.get_run_id().to_owned(),
             countable: matrix.get_feature_type().to_string(),
             table: Some(table.clone()),
             items: vec![ReportItem::MultiBar {
-                id: format!("{id_prefix}"),
+                id: id_prefix.to_string(),
                 names: growth_labels.clone(),
                 x_label: "taxa".to_string(),
                 y_label: format!("{}s", count),

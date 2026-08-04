@@ -186,7 +186,7 @@ impl CoverageMatrix {
         let file = match File::open(file_path) {
             Ok(f) => f,
             Err(e) => {
-                log::error!("Could not open file {} ({})", file_path, e.to_string());
+                log::error!("Could not open file {} ({})", file_path, e);
                 return HashMap::new();
             }
         };
@@ -203,11 +203,7 @@ impl CoverageMatrix {
             let line = match line {
                 Ok(l) => l,
                 Err(e) => {
-                    log::error!(
-                        "Could not read line in file {} ({})",
-                        file_path,
-                        e.to_string()
-                    );
+                    log::error!("Could not read line in file {} ({})", file_path, e);
                     continue;
                 }
             };
@@ -255,7 +251,7 @@ impl CoverageMatrix {
         window_file: Option<&str>,
     ) -> impl Iterator<Item = (String, impl Iterator<Item = (usize, usize, Hist)> + '_)> + '_ {
         let bed_buckets: Option<HashMap<usize, Vec<(usize, usize)>>> =
-            window_file.map(|file_path| self.get_buckets_from_bucket_file(&file_path));
+            window_file.map(|file_path| self.get_buckets_from_bucket_file(file_path));
         let mut all_references_buckets: Vec<(String, Vec<(usize, usize, Vec<usize>)>)> = Vec::new();
         for (ref_id, reference) in self.feature_positions.references.iter().enumerate() {
             let (min, feature_buckets) = match bed_buckets.as_ref() {
@@ -372,7 +368,7 @@ impl CoverageMatrix {
             self.run_name.to_string(),
         );
         for (i, c) in abacus.iter().enumerate() {
-            hist.insert_feature_of_coverage_and_length(*c as usize, self.feature_lengths[i]);
+            hist.insert_feature_of_coverage_and_length(*c, self.feature_lengths[i]);
         }
         (hist, used_features)
     }
@@ -480,7 +476,7 @@ impl CoverageMatrix {
     }
 
     pub fn get_count_of_feature(&self, feature: usize) -> usize {
-        self.matrix.get_feature_occurrence_count(feature) as usize
+        self.matrix.get_feature_occurrence_count(feature)
     }
 
     pub fn get_counts_for_feature(&self, id: usize) -> Vec<usize> {
@@ -539,6 +535,12 @@ pub struct Positions {
     reference_lookup: HashMap<String, u8>,
     feature_refs: Vec<u8>,
     feature_positions: Vec<usize>,
+}
+
+impl Default for Positions {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl Positions {
@@ -619,7 +621,7 @@ impl Positions {
 
     /// This function cleans up invalid (i.e. unset) positions
     pub fn cleanup(&mut self) {
-        if self.feature_refs.iter().any(|&x| x == u8::MAX) {
+        if self.feature_refs.contains(&u8::MAX) {
             self.references.push("DEFAULT".to_string());
             let id = (self.references.len() - 1) as u8;
             self.reference_lookup.insert("DEFAULT".to_string(), id);

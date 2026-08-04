@@ -35,7 +35,7 @@ pub fn get_instructions(args: &ArgMatches) -> Option<Result<Vec<FileRun>, anyhow
         } else if args.get_flag("groupby-haplotype") {
             Some(Grouping::Haplotype)
         } else {
-            grouping.map(|g| Grouping::Custom(g))
+            grouping.map(Grouping::Custom)
         };
         let parameters = vec![FileRun::Gfa {
             graph,

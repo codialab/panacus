@@ -64,16 +64,12 @@ pub fn parse_bed_to_path_segments<R: Read>(
         if fields.len() == 1 {
             segments.push(PathSegment::from_str(path_name));
         } else if fields.len() >= 3 {
-            let start = usize::from_str(fields[1]).expect(&format!(
-                "error line {}: `{}` is not an usize",
-                i + 1,
-                fields[1]
-            ));
-            let end = usize::from_str(fields[2]).expect(&format!(
-                "error line {}: `{}` is not an usize",
-                i + 1,
-                fields[2]
-            ));
+            let start = usize::from_str(fields[1]).unwrap_or_else(|_| {
+                panic!("error line {}: `{}` is not an usize", i + 1, fields[1])
+            });
+            let end = usize::from_str(fields[2]).unwrap_or_else(|_| {
+                panic!("error line {}: `{}` is not an usize", i + 1, fields[2])
+            });
 
             if use_block_info && fields.len() == 12 {
                 let block_count = fields[9].parse::<usize>().unwrap_or(0);
@@ -129,7 +125,7 @@ pub fn parse_groups<R: Read>(data: &mut BufReader<R>) -> Result<Vec<(PathSegment
             }
         }
         let line = String::from_utf8(buf.clone())
-            .expect(&format!("error in line {}: some character is not UTF-8", i));
+            .unwrap_or_else(|_| panic!("error in line {}: some character is not UTF-8", i));
         let columns: Vec<&str> = line.split('\t').collect();
 
         if columns.len() != 2 {
@@ -195,11 +191,11 @@ pub fn write_table_with_start_index(
     for i in 0..n {
         for j in 0..headers.len() {
             if j > 0 {
-                res.push_str("\t");
+                res.push('\t');
             }
             res.push_str(&format!("{:0}", headers[j][i]));
         }
-        res.push_str("\n");
+        res.push('\n');
     }
     let n = columns.first().unwrap_or(&Vec::new()).len();
     for i in 0..n {
@@ -207,7 +203,7 @@ pub fn write_table_with_start_index(
         for j in 0..columns.len() {
             res.push_str(&format!("\t{:0}", columns[j][i].floor()));
         }
-        res.push_str("\n");
+        res.push('\n');
     }
     Ok(res)
 }
@@ -223,19 +219,19 @@ pub fn write_ordered_table(
     for i in 0..n {
         for j in 0..headers.len() {
             if j > 0 {
-                res.push_str("\t");
+                res.push('\t');
             }
             res.push_str(&format!("{:0}", headers[j][i]));
         }
-        res.push_str("\n");
+        res.push('\n');
     }
     let n = columns.first().unwrap_or(&Vec::new()).len();
     for i in 0..n {
-        res.push_str(&format!("{}", index[i]));
+        res.push_str(&index[i].to_string());
         for column in columns {
             res.push_str(&format!("\t{:0}", column[i].floor()));
         }
-        res.push_str("\n");
+        res.push('\n');
     }
 
     Ok(res)

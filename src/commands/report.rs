@@ -32,11 +32,7 @@ pub fn get_subcommand() -> Command {
 }
 
 pub fn get_instructions(args: &ArgMatches) -> Option<Result<Vec<FileRun>, anyhow::Error>> {
-    if let Some(args) = args.subcommand_matches("report") {
-        Some(parse_report_args(args))
-    } else {
-        None
-    }
+    args.subcommand_matches("report").map(parse_report_args)
 }
 
 fn parse_report_args(args: &ArgMatches) -> Result<Vec<FileRun>, anyhow::Error> {

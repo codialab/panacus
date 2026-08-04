@@ -753,7 +753,7 @@ impl GfaParser {
             );
             items
                 .entry(group)
-                .or_insert(Vec::new())
+                .or_default()
                 .extend(&item_table.items[start..end]);
         }
         let mut new_items = Vec::new();

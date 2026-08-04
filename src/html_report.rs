@@ -79,7 +79,7 @@ impl AnalysisSection {
                 .iter()
                 .map(|item| HashMap::from([("id", item.get_id()), ("name", item.get_name())]))
                 .collect()
-        } else if self.items.len() == 0 {
+        } else if self.items.is_empty() {
             vec![]
         } else {
             vec![HashMap::from([
@@ -132,7 +132,7 @@ impl AnalysisSection {
     }
 
     pub fn generate_custom_section(name: String, file: String) -> anyhow::Result<Vec<Self>> {
-        let id = name.to_lowercase().replace(&[' ', '|', '\\'], "-");
+        let id = name.to_lowercase().replace([' ', '|', '\\'], "-");
         let id = format!("custom-{id}");
         let mut table: Option<String> = None;
         let mut plot_downloads = Vec::new();
@@ -168,10 +168,9 @@ impl AnalysisSection {
                 let mut lines = buffer.lines();
                 let header = lines
                     .next()
-                    .expect(&format!(
-                        "{} file {} should contain at least one line",
-                        t, file
-                    ))
+                    .unwrap_or_else(|| {
+                        panic!("{} file {} should contain at least one line", t, file)
+                    })
                     .split(split_char)
                     .map(|x| x.trim().to_owned())
                     .collect();
@@ -195,7 +194,7 @@ impl AnalysisSection {
             _ => unimplemented!("Other formats have not been implemented yet"),
         };
         Ok(vec![AnalysisSection {
-            id: id,
+            id,
             analysis: "Custom".to_string(),
             run_name: "My Custom Run".to_string(),
             run_id: "MyCustomRun".to_string(),
@@ -627,7 +626,7 @@ impl ReportItem {
                                 for (i, label) in labels.iter().enumerate() {
                                     text.push_str(&format!(", '{}': {}", label, w.values[i]));
                                 }
-                                text.push_str("}");
+                                text.push('}');
                                 text
                             })
                             .collect::<Vec<String>>()
@@ -675,7 +674,7 @@ impl ReportItem {
                 let ordinal = labels.iter().all(|l| l.parse::<f64>().is_ok());
                 let data: Vec<String> = labels
                     .into_iter()
-                    .zip(values.into_iter())
+                    .zip(values)
                     .map(|(l, v)| format!("{{ 'label': '{}', 'value': {} }}", l, v))
                     .collect();
                 let mut data_text = "{'values': [".to_string();
@@ -822,15 +821,15 @@ impl ReportItem {
                     registry.register_template_string("hexbin", from_utf8(HEXBIN_HBS).unwrap())?;
                 }
                 let mut js_object = format!("new Hexbin('{}', {{'values': [", id,);
-                for (_i, bin) in bins.iter().enumerate() {
+                for bin in bins.iter() {
                     js_object.push_str(&format!(
                         "{{ coverage: {}, length: {}, size: {} }}, ",
                         bin.x, bin.y, bin.size,
                     ));
                 }
                 js_object.push_str("]}, [");
-                for (_i, bin) in bins.into_iter().enumerate() {
-                    js_object.push_str(&format!("[",));
+                for bin in bins.into_iter() {
+                    js_object.push_str("[");
                     for node in bin.content.iter().take(threshold) {
                         js_object.push_str(&format!("'{}',", node,));
                     }
@@ -865,7 +864,7 @@ impl ReportItem {
 
                 let data: Vec<String> = x_values
                     .into_iter()
-                    .zip(y_values.into_iter())
+                    .zip(y_values)
                     .map(|(l, v)| format!("{{ 'x': '{}', 'y': {} }}", l, v))
                     .collect();
                 let mut data_text = "{'values': [".to_string();
@@ -993,7 +992,7 @@ impl Bin {
             .expect("At least one point");
         let max_length = points.iter().map(|(_i, _c, l)| *l).fold(0.04, f64::max);
         let dx = max_coverage as f64 / (nx - 1) as f64;
-        let _t = dx as f64 / 3f64.sqrt();
+        let _t = dx / 3f64.sqrt();
         let dy = max_length / (ny - 1) as f64;
         let mut bins: HashMap<(bool, i64, i64), Self> = HashMap::new();
         for point in points {
@@ -1020,8 +1019,8 @@ impl Bin {
             {
                 bins.entry((false, (black_x / dx) as i64, (black_y / dy) as i64))
                     .or_insert(Self {
-                        x: black_x as f64,
-                        y: black_y as f64,
+                        x: black_x,
+                        y: black_y,
                         size: 0,
                         content: Vec::new(),
                     })
@@ -1034,8 +1033,8 @@ impl Bin {
                     ((green_y - dy / 2.0) / dy) as i64,
                 ))
                 .or_insert(Self {
-                    x: green_x as f64,
-                    y: green_y as f64,
+                    x: green_x,
+                    y: green_y,
                     size: 0,
                     content: Vec::new(),
                 })
@@ -1051,7 +1050,7 @@ impl Bin {
     }
 
     fn distance(x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
-        (((x1 - x2).powf(2.0) + (y1 - y2).powf(2.0)) as f64).sqrt()
+        ((x1 - x2).powf(2.0) + (y1 - y2).powf(2.0)).sqrt()
     }
 }
 

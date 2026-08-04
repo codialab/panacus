@@ -382,17 +382,17 @@ pub fn is_contained(v: &[(usize, usize)], el: &(usize, usize)) -> bool {
 }
 
 pub fn averageu32(v: &[u32]) -> f32 {
-    if v.len() == 0 {
+    if v.is_empty() {
         return 0.0;
     }
     (v.iter().map(|x| *x as u64).sum::<u64>() as f64 / v.len() as f64) as f32
 }
 
 pub fn averagef64(v: &[f64]) -> f64 {
-    if v.len() == 0 {
+    if v.is_empty() {
         return 0.0;
     }
-    v.iter().map(|x| *x).sum::<f64>() / v.len() as f64
+    v.iter().copied().sum::<f64>() / v.len() as f64
 }
 
 //pub fn averageu64 (v: &[u64]) -> f64 {
@@ -527,7 +527,7 @@ pub fn canonical(kmer_bits: u64, k: usize) -> u64 {
 pub fn to_id(s: &str) -> String {
     s.to_string()
         .to_lowercase()
-        .replace(&[' ', '|', '/', '\\', '\'', '"'], "-")
+        .replace([' ', '|', '/', '\\', '\'', '"'], "-")
 }
 
 #[cfg(test)]

@@ -65,7 +65,7 @@ impl MatrixBasedAnalysis for CoverageColors {
             matrix
                 .get_run_id()
                 .to_lowercase()
-                .replace(&[' ', '|', '\\'], "-")
+                .replace([' ', '|', '\\'], "-")
         );
         let output_svg = self.get_image(matrix);
         let growth_tabs = vec![AnalysisSection {
@@ -74,7 +74,7 @@ impl MatrixBasedAnalysis for CoverageColors {
             run_id: matrix.get_run_id().to_owned(),
             countable: CountType::Node.to_string(),
             table: Some(table),
-            id: format!("{id_prefix}"),
+            id: id_prefix.to_string(),
             plot_downloads: vec![("svg".to_string(), "Download as svg".to_string())],
             items: match output_svg {
                 Ok(svg_path) => vec![ReportItem::Svg {
@@ -88,6 +88,12 @@ impl MatrixBasedAnalysis for CoverageColors {
             },
         }];
         Ok(growth_tabs)
+    }
+}
+
+impl Default for CoverageColors {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -130,7 +136,7 @@ impl CoverageColors {
         // TODO get file name
         let graph_path = matrix.get_run_name();
         Command::new("Bandage")
-            .args(["image", &graph_path, svg_path, "--colors", csv_path])
+            .args(["image", graph_path, svg_path, "--colors", csv_path])
             .output()?;
         let copied_path = svg_path.to_string();
         svg.keep()?;

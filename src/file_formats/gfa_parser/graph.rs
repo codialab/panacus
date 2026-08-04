@@ -252,10 +252,7 @@ impl GraphStorage {
     }
 
     pub fn get_node_tuples(&self) -> Vec<(Vec<u8>, ItemId)> {
-        self.node2id
-            .iter()
-            .map(|(k, v)| (k.clone(), v.clone()))
-            .collect()
+        self.node2id.iter().map(|(k, v)| (k.clone(), *v)).collect()
     }
 
     pub fn node_len(&self, v: &ItemId) -> u32 {

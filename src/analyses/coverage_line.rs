@@ -67,7 +67,7 @@ impl MatrixBasedAnalysis for CoverageLine {
             matrix
                 .get_run_id()
                 .to_lowercase()
-                .replace(&[' ', '|', '\\'], "-")
+                .replace([' ', '|', '\\'], "-")
         );
         if self.hist.is_none() {
             self.set_inner(matrix);

@@ -48,7 +48,7 @@ impl MatrixBasedAnalysis for Similarity {
             matrix
                 .get_run_id()
                 .to_lowercase()
-                .replace(&[' ', '|', '\\'], "-")
+                .replace([' ', '|', '\\'], "-")
         );
         let tabs = vec![AnalysisSection {
             id: format!("{id_prefix}-{k}"),
@@ -84,7 +84,7 @@ impl Similarity {
         let mut labels = matrix.get_path_names().clone();
         let group_count = labels.len();
 
-        let tuples: Vec<(_, _)> = r.iter().map(|x| *x as usize).tuple_windows().collect();
+        let tuples: Vec<(_, _)> = r.iter().copied().tuple_windows().collect();
 
         // We can use a matrix as nearly all paths will share at least one feature with every
         // other path
@@ -92,7 +92,7 @@ impl Similarity {
         let mut path_lens: Vec<usize> = vec![0; labels.len()];
         let node_lens = matrix.get_feature_lengths();
         for (index, tuple) in tuples.iter().enumerate() {
-            let node_length = node_lens[index] as usize;
+            let node_length = node_lens[index];
             for x in &c[tuple.0..tuple.1] {
                 path_lens[*x] += node_length;
                 for y in &c[tuple.0..tuple.1] {
@@ -170,13 +170,13 @@ fn get_table_string(table: &Vec<Vec<f32>>, groups: &Vec<String>) -> String {
     for group in groups {
         res.push_str(&format!("\t{}", group));
     }
-    res.push_str("\n");
+    res.push('\n');
     for (row_index, row) in table.iter().enumerate() {
         res.push_str(&groups[row_index]);
         for cell in row {
             res.push_str(&format!("\t{}", cell));
         }
-        res.push_str("\n");
+        res.push('\n');
     }
     res
 }

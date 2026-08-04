@@ -19,17 +19,12 @@ impl MatrixBasedAnalysis for RegionalVariation {
     fn generate_table(&mut self, matrix: &CoverageMatrix) -> anyhow::Result<String> {
         let data = self.get_cached_data(matrix);
 
-        let mut text = format!("reference\tstart\tend\tHill0\tHill1\tHill2\n");
+        let mut text = "reference\tstart\tend\tHill0\tHill1\tHill2\n".to_string();
         for (sequence_id, sequence) in data {
             for (variation, start, end) in sequence {
                 let line = format!(
                     "{}\t{}\t{}\t{}\t{}\t{}\n",
-                    sequence_id.to_string(),
-                    start,
-                    end,
-                    variation.0,
-                    variation.1,
-                    variation.2
+                    sequence_id, start, end, variation.0, variation.1, variation.2
                 );
                 text.push_str(&line);
             }
@@ -46,10 +41,10 @@ impl MatrixBasedAnalysis for RegionalVariation {
         let id_prefix = matrix
             .get_run_id()
             .to_lowercase()
-            .replace(&[' ', '|', '\\'], "-");
+            .replace([' ', '|', '\\'], "-");
         let id_prefix = format!("regional-variation-{}", id_prefix);
         let (mut sequences, mut values): (Vec<String>, Vec<Vec<Window>>) = data
-            .into_iter()
+            .iter()
             .map(|(sequence, values)| {
                 let values = values
                     .iter()
@@ -82,7 +77,7 @@ impl MatrixBasedAnalysis for RegionalVariation {
         let table_text = self.generate_table(matrix)?;
         let table_text = format!("`{}`", table_text);
         let regional_variation_tabs = vec![AnalysisSection {
-            id: format!("{id_prefix}"),
+            id: id_prefix.to_string(),
             analysis: "Regional Variation".to_string(),
             table: Some(table_text),
             run_name: matrix.get_run_name().to_string(),

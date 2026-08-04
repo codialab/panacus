@@ -51,7 +51,7 @@ impl MatrixBasedAnalysis for Info {
 
         let run_name = matrix.get_run_name();
         let run_id = matrix.get_run_id();
-        let safe_run_name = run_id.to_lowercase().replace(&[' ', '|', '\\'], "-");
+        let safe_run_name = run_id.to_lowercase().replace([' ', '|', '\\'], "-");
         Ok(vec![AnalysisSection {
             id: format!("{safe_run_name}-file"),
             analysis: "Pangenome Info".to_string(),
@@ -62,6 +62,12 @@ impl MatrixBasedAnalysis for Info {
             items: plots,
             plot_downloads: get_default_plot_downloads(),
         }])
+    }
+}
+
+impl Default for Info {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -130,7 +136,7 @@ impl std::fmt::Display for FileInfo {
                 format!("info\t{}\t{}", k_c, v_c)
             })
             .join("\n");
-        write!(f, "{}\n", text)?;
+        writeln!(f, "{}", text)?;
         let table_text = self
             .tables
             .iter()
@@ -144,7 +150,7 @@ impl std::fmt::Display for FileInfo {
                     .join("\n")
             })
             .join("\n");
-        write!(f, "{}\n", table_text)
+        writeln!(f, "{}", table_text)
     }
 }
 

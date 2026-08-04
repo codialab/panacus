@@ -148,9 +148,9 @@ pub fn get_ref_length(ref_nodes: &Vec<(ItemId, Orientation)>, node_lens: &Vec<u3
     length
 }
 
-pub fn split_ref_paths<'a>(
-    ref_paths: HashMap<PathSegment, &'a Vec<(ItemId, Orientation)>>,
-) -> HashMap<PathSegment, HashMap<PathSegment, &'a Vec<(ItemId, Orientation)>>> {
+pub fn split_ref_paths(
+    ref_paths: HashMap<PathSegment, &Vec<(ItemId, Orientation)>>,
+) -> HashMap<PathSegment, HashMap<PathSegment, &Vec<(ItemId, Orientation)>>> {
     let mut result: HashMap<PathSegment, HashMap<PathSegment, &Vec<(ItemId, Orientation)>>> =
         HashMap::new();
     for (path, path_content) in ref_paths {
@@ -313,7 +313,7 @@ fn cover_windows_with_reference_nodes(
             ref_windows[current_window_index].0.push((
                 ref_nodes[current_node_index].0,
                 ref_nodes[current_node_index].1,
-                remaining_node_length as usize,
+                remaining_node_length,
                 // either both or back
                 if current_window_length == 0 && already_used_bps_of_node > 0 {
                     IncludedEnds::Back
@@ -332,7 +332,7 @@ fn cover_windows_with_reference_nodes(
             ref_windows[current_window_index].0.push((
                 ref_nodes[current_node_index].0,
                 ref_nodes[current_node_index].1,
-                cut_node_length as usize, // either none or front
+                cut_node_length, // either none or front
                 if current_window_length == 0 && already_used_bps_of_node > 0 {
                     IncludedEnds::None
                 } else {
@@ -421,7 +421,7 @@ fn merge_small_windows(
     for window in ref_windows {
         for grid_window in window_grid.iter_mut() {
             if window.1 >= grid_window.1 && window.2 <= grid_window.2 {
-                grid_window.0.extend(window.0.into_iter());
+                grid_window.0.extend(window.0);
                 break;
             }
         }
@@ -457,8 +457,8 @@ pub fn get_windows(
     };
 
     // Add close non-reference nodes to windows
-    let windows = augment_windows_with_non_reference_nodes(ref_nodes, ref_windows, neighbors);
-    windows
+
+    augment_windows_with_non_reference_nodes(ref_nodes, ref_windows, neighbors)
 }
 
 pub fn get_edge_windows(

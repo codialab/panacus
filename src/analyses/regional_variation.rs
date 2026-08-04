@@ -12,6 +12,7 @@ pub struct RegionalVariation {
     order: Option<String>,
     window_size: usize,
     windows: Option<String>,
+    normalize_windows: bool,
     cache: OnceCell<Vec<(String, Vec<(Variation, usize, usize)>)>>,
 }
 
@@ -95,11 +96,17 @@ impl MatrixBasedAnalysis for RegionalVariation {
 }
 
 impl RegionalVariation {
-    pub fn new(window_size: usize, order: Option<String>, windows: Option<String>) -> Self {
+    pub fn new(
+        window_size: usize,
+        order: Option<String>,
+        windows: Option<String>,
+        normalize_windows: bool,
+    ) -> Self {
         Self {
             order,
             window_size,
             windows,
+            normalize_windows,
             cache: OnceCell::new(),
         }
     }
@@ -124,7 +131,20 @@ impl RegionalVariation {
                             let richness = calc_richness(&hist);
                             let shannon = calc_shannon_entropy(&hist);
                             let simpson = calc_simpson_index(&hist);
-                            (Variation(richness, shannon, simpson), start, end)
+                            if self.normalize_windows {
+                                let length = (end - start) as f64;
+                                (
+                                    Variation(
+                                        richness / length * 1e6,
+                                        shannon / length * 1e6,
+                                        simpson / length * 1e6,
+                                    ),
+                                    start,
+                                    end,
+                                )
+                            } else {
+                                (Variation(richness, shannon, simpson), start, end)
+                            }
                         })
                         .collect::<Vec<(Variation, usize, usize)>>(),
                     )

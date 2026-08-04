@@ -20,6 +20,7 @@ pub struct RegionalGrowth {
     order: Option<String>,
     window_size: usize,
     windows: Option<String>,
+    normalize_windows: bool,
     cache: OnceCell<Vec<(String, Vec<(Growth, usize, usize)>)>>,
 }
 
@@ -103,11 +104,17 @@ impl MatrixBasedAnalysis for RegionalGrowth {
 }
 
 impl RegionalGrowth {
-    pub fn new(window_size: usize, order: Option<String>, windows: Option<String>) -> Self {
+    pub fn new(
+        window_size: usize,
+        order: Option<String>,
+        windows: Option<String>,
+        normalize_windows: bool,
+    ) -> Self {
         Self {
             order,
             window_size,
             windows,
+            normalize_windows,
             cache: OnceCell::new(),
         }
     }
@@ -134,7 +141,22 @@ impl RegionalGrowth {
                             }
                             let result = calc_growth_predictions(&hist);
                             match result {
-                                Ok((d2, d3, d5)) => Some((Growth(d2, d3, d5), start, end)),
+                                Ok((d2, d3, d5)) => {
+                                    if self.normalize_windows {
+                                        let length = (end - start) as f64;
+                                        Some((
+                                            Growth(
+                                                d2 / length * 1e6,
+                                                d3 / length * 1e6,
+                                                d5 / length * 1e6,
+                                            ),
+                                            start,
+                                            end,
+                                        ))
+                                    } else {
+                                        Some((Growth(d2, d3, d5), start, end))
+                                    }
+                                }
                                 Err(_) => {
                                     error_counter += 1;
                                     None

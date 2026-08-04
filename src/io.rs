@@ -177,31 +177,31 @@ pub fn parse_threshold_file<R: Read>(data: &mut BufReader<R>) -> Result<Vec<Thre
     Ok(res)
 }
 
-pub fn write_table(headers: &Vec<Vec<String>>, columns: &Vec<Vec<f64>>) -> Result<String, Error> {
+pub fn write_table(headers: &[Vec<String>], columns: &[Vec<f64>]) -> Result<String, Error> {
     write_table_with_start_index(headers, columns, 0)
 }
 
 pub fn write_table_with_start_index(
-    headers: &Vec<Vec<String>>,
-    columns: &Vec<Vec<f64>>,
+    headers: &[Vec<String>],
+    columns: &[Vec<f64>],
     start_index: usize,
 ) -> Result<String, Error> {
     let n = headers.first().unwrap_or(&Vec::new()).len();
     let mut res = String::new();
     for i in 0..n {
-        for j in 0..headers.len() {
+        for (j, value) in headers.iter().enumerate() {
             if j > 0 {
                 res.push('\t');
             }
-            res.push_str(&format!("{:0}", headers[j][i]));
+            res.push_str(&format!("{:0}", value[i]));
         }
         res.push('\n');
     }
     let n = columns.first().unwrap_or(&Vec::new()).len();
     for i in 0..n {
         res.push_str(&(i + start_index).to_string());
-        for j in 0..columns.len() {
-            res.push_str(&format!("\t{:0}", columns[j][i].floor()));
+        for column in columns {
+            res.push_str(&format!("\t{:0}", column[i].floor()));
         }
         res.push('\n');
     }
@@ -209,19 +209,19 @@ pub fn write_table_with_start_index(
 }
 
 pub fn write_ordered_table(
-    headers: &Vec<Vec<String>>,
+    headers: &[Vec<String>],
     columns: &Vec<Vec<f64>>,
-    index: &Vec<String>,
+    index: &[String],
 ) -> anyhow::Result<String> {
     let n = headers.first().unwrap_or(&Vec::new()).len();
     let mut res = String::new();
 
     for i in 0..n {
-        for j in 0..headers.len() {
+        for (j, value) in headers.iter().enumerate() {
             if j > 0 {
                 res.push('\t');
             }
-            res.push_str(&format!("{:0}", headers[j][i]));
+            res.push_str(&format!("{:0}", value[i]));
         }
         res.push('\n');
     }

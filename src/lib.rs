@@ -66,6 +66,9 @@ macro_rules! some_or_return {
     };
 }
 
+type HistBasedAnalyses = Vec<Box<dyn HistBasedAnalysis>>;
+type MatrixBasedAnalyses = Vec<Box<dyn MatrixBasedAnalysis>>;
+
 fn set_number_of_threads(params: &ArgMatches) {
     //if num_threads is 0 then the Rayon will select
     //the number of threads to the core number automatically
@@ -262,7 +265,7 @@ fn execute_pipeline<W: Write>(
 
 fn get_hist_reports(
     hist: Hist,
-    hist_based: Vec<Box<dyn HistBasedAnalysis>>,
+    hist_based: HistBasedAnalyses,
     config_content: &str,
     json: bool,
 ) -> anyhow::Result<String> {
@@ -291,10 +294,7 @@ fn get_hist_reports(
     }
 }
 
-fn get_hist_tables(
-    hist: Hist,
-    hist_based: Vec<Box<dyn HistBasedAnalysis>>,
-) -> anyhow::Result<String> {
+fn get_hist_tables(hist: Hist, hist_based: HistBasedAnalyses) -> anyhow::Result<String> {
     let reports: Vec<String> = hist_based
         .into_iter()
         .filter_map(|mut x| x.generate_table(&hist).ok())
@@ -305,8 +305,8 @@ fn get_hist_tables(
 
 fn get_matrix_tables(
     matrix: CoverageMatrix,
-    matrix_based: Vec<Box<dyn MatrixBasedAnalysis>>,
-    hist_based: Vec<Box<dyn HistBasedAnalysis>>,
+    matrix_based: MatrixBasedAnalyses,
+    hist_based: HistBasedAnalyses,
 ) -> anyhow::Result<String> {
     let mut reports: Vec<String> = matrix_based
         .into_iter()
@@ -325,8 +325,8 @@ fn get_matrix_tables(
 
 fn get_matrix_reports(
     matrix: CoverageMatrix,
-    matrix_based: Vec<Box<dyn MatrixBasedAnalysis>>,
-    hist_based: Vec<Box<dyn HistBasedAnalysis>>,
+    matrix_based: MatrixBasedAnalyses,
+    hist_based: HistBasedAnalyses,
     config_content: &str,
     json: bool,
 ) -> anyhow::Result<String> {
@@ -369,12 +369,7 @@ fn get_matrix_reports(
     }
 }
 
-fn split_analyses(
-    analyses: Vec<AnalysisParameter>,
-) -> (
-    Vec<Box<dyn HistBasedAnalysis>>,
-    Vec<Box<dyn MatrixBasedAnalysis>>,
-) {
+fn split_analyses(analyses: Vec<AnalysisParameter>) -> (HistBasedAnalyses, MatrixBasedAnalyses) {
     analyses.into_iter().map(|x| x.to_analysis()).fold(
         (Vec::new(), Vec::new()),
         |(mut hists, mut matrices), item| {

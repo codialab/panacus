@@ -251,7 +251,7 @@ impl AnalysisSection {
         registry.render("report", &vars)
     }
 
-    fn get_tree(sections: &Vec<Self>, registry: &mut Handlebars) -> Result<String, RenderError> {
+    fn get_tree(sections: &[Self], registry: &mut Handlebars) -> Result<String, RenderError> {
         let analysis_names = sections.iter().map(|x| x.analysis.clone()).unique();
         let mut analyses = Vec::new();
         for analysis_name in analysis_names {
@@ -601,17 +601,16 @@ impl ReportItem {
                 }
 
                 let mut values = values;
-                for j in 0..values.len() {
-                    for i in 0..values[j].len() {
-                        if i == values[j].len() - 1 {
+                for value in &mut values {
+                    for i in 0..value.len() {
+                        if i == value.len() - 1 {
                             continue;
                         }
 
                         // if two following values are continuous
                         // introduce overlap in plot (avoids gaps due to rounding errors)
-                        if values[j][i].end == values[j][i + 1].start {
-                            values[j].get_mut(i).expect("values has value").end =
-                                values[j][i + 1].end;
+                        if value[i].end == value[i + 1].start {
+                            value.get_mut(i).expect("values has value").end = value[i + 1].end;
                         }
                     }
                 }
@@ -829,7 +828,7 @@ impl ReportItem {
                 }
                 js_object.push_str("]}, [");
                 for bin in bins.into_iter() {
-                    js_object.push_str("[");
+                    js_object.push('[');
                     for node in bin.content.iter().take(threshold) {
                         js_object.push_str(&format!("'{}',", node,));
                     }

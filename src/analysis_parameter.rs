@@ -90,12 +90,16 @@ pub enum AnalysisParameter {
         window_size: usize,
         order: Option<String>,
         windows: Option<String>,
+        #[serde(default)]
+        normalize_windows: bool,
     },
     RegionalGrowth {
         #[serde(default = "get_window_size")]
         window_size: usize,
         order: Option<String>,
         windows: Option<String>,
+        #[serde(default)]
+        normalize_windows: bool,
     },
     SectionGrowth {
         sections: String,
@@ -146,16 +150,24 @@ impl AnalysisParameter {
                 window_size,
                 order,
                 windows,
+                normalize_windows,
             } => Analysis::MatrixBased(Box::new(RegionalVariation::new(
                 window_size,
                 order,
                 windows,
+                normalize_windows,
             ))),
             Self::RegionalGrowth {
                 window_size,
                 order,
                 windows,
-            } => Analysis::MatrixBased(Box::new(RegionalGrowth::new(window_size, order, windows))),
+                normalize_windows,
+            } => Analysis::MatrixBased(Box::new(RegionalGrowth::new(
+                window_size,
+                order,
+                windows,
+                normalize_windows,
+            ))),
             _ => unimplemented!("Other analyses have not been yet implemented"),
         }
     }

@@ -218,20 +218,16 @@ fn get_threshold() -> usize {
     Deserialize,
 )]
 #[strum(serialize_all = "lowercase")]
+#[derive(Default)]
 pub enum ClusterMethod {
     Single,
     Complete,
     Average,
     Weighted,
     Ward,
+    #[default]
     Centroid,
     Median,
-}
-
-impl Default for ClusterMethod {
-    fn default() -> Self {
-        Self::Centroid
-    }
 }
 
 impl ClusterMethod {

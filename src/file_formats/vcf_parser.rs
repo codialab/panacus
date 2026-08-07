@@ -456,18 +456,15 @@ impl VcfHeader {
 }
 
 /// What is set for the length of a feature
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
+#[derive(
+    Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize, Default,
+)]
 pub enum VcfCountType {
     /// 1 for every feature (just count the number of variants)
     Variants,
     /// The length of the ALT allele is used
+    #[default]
     AltLength,
-}
-
-impl Default for VcfCountType {
-    fn default() -> Self {
-        Self::AltLength
-    }
 }
 
 impl Display for VcfCountType {

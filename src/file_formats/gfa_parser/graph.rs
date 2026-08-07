@@ -21,16 +21,11 @@ static PATHID_COORDS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.+):([0-9]+)-([0
 
 static METHOD_CALL_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum Orientation {
+    #[default]
     Forward,
     Backward,
-}
-
-impl Default for Orientation {
-    fn default() -> Self {
-        Orientation::Forward
-    }
 }
 
 impl fmt::Display for Orientation {

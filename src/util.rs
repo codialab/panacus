@@ -41,16 +41,12 @@ unsafe impl Sync for Wrap<Vec<Vec<u64>>> {}
     Deserialize,
 )]
 #[strum(serialize_all = "lowercase")]
+#[derive(Default)]
 pub enum CountType {
+    #[default]
     Node,
     Bp,
     Edge,
-}
-
-impl Default for CountType {
-    fn default() -> Self {
-        CountType::Node
-    }
 }
 
 impl fmt::Display for CountType {

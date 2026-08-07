@@ -103,7 +103,7 @@ impl FileFormatParser for GfaParser {
 
     fn generate_matrix(self: Box<Self>) -> CoverageMatrix {
         let paths_to_collect = match self.reference.as_ref() {
-            Some(r) => vec![PathSegment::from_str(r)],
+            Some(r) => vec![PathSegment::create_from_str(r)],
             None => vec![],
         };
         let (

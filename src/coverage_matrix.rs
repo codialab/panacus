@@ -347,7 +347,7 @@ impl CoverageMatrix {
     pub fn get_hist_and_used_features(
         &self,
         features: Option<&Vec<usize>>,
-        paths: &Vec<usize>,
+        paths: &[usize],
     ) -> (Hist, Vec<usize>) {
         let c = Threshold::Absolute(1);
         self.get_hist_and_used_features_with_coverage(features, paths, &c)
@@ -356,7 +356,7 @@ impl CoverageMatrix {
     pub fn get_hist_and_used_features_with_coverage(
         &self,
         features: Option<&Vec<usize>>,
-        paths: &Vec<usize>,
+        paths: &[usize],
         c: &Threshold,
     ) -> (Hist, Vec<usize>) {
         let (abacus, used_features) =
@@ -387,7 +387,7 @@ impl CoverageMatrix {
     pub fn get_abacus_and_used_features_with_coverage(
         &self,
         features: Option<&Vec<usize>>,
-        paths: &Vec<usize>,
+        paths: &[usize],
         c: &Threshold,
     ) -> (Vec<usize>, Vec<usize>) {
         let all_features = (0..self.count_of_features).collect();
@@ -395,7 +395,7 @@ impl CoverageMatrix {
             Some(f) => f,
             None => &all_features,
         };
-        let mut paths = paths.clone();
+        let mut paths = paths.to_vec();
         paths.sort();
         let mut non_zeroes = Vec::new();
         let mut abacus = vec![0; self.count_of_features];
@@ -440,7 +440,7 @@ impl CoverageMatrix {
 
     /// Creates an iterator over indices in the order (in order),
     /// containing only the indices for which there exists an element
-    pub fn get_appearances_for_order(&self, feature: usize, order: &Vec<String>) -> Vec<usize> {
+    pub fn get_appearances_for_order(&self, feature: usize, order: &[String]) -> Vec<usize> {
         let translation_table: HashMap<&String, usize> = self
             .path_names
             .iter()
@@ -484,7 +484,7 @@ impl CoverageMatrix {
             .get_counts_for_feature(id, self.path_names.len())
     }
 
-    pub fn get_counts_for_feature_in_order(&self, id: usize, order: &Vec<String>) -> Vec<usize> {
+    pub fn get_counts_for_feature_in_order(&self, id: usize, order: &[String]) -> Vec<usize> {
         let translation_table: HashMap<&String, usize> = self
             .path_names
             .iter()

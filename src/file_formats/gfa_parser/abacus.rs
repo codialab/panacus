@@ -18,25 +18,13 @@ use crate::util::*;
 use super::graph::{GraphStorage, PathSegment};
 use super::util::parse_gfa_paths_walks;
 
-#[derive(Debug, PartialEq, Eq, Clone)]
+#[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct GraphMaskParameters {
     pub positive_list: String,
     pub negative_list: String,
     pub groupby: String,
     pub groupby_sample: bool,
     pub groupby_haplotype: bool,
-}
-
-impl GraphMaskParameters {
-    pub fn default() -> Self {
-        Self {
-            positive_list: "".to_owned(),
-            negative_list: "".to_owned(),
-            groupby: "".to_owned(),
-            groupby_sample: false,
-            groupby_haplotype: false,
-        }
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -136,7 +124,7 @@ impl GraphMask {
 
     pub fn load_coord_list(
         coord_text: &str,
-        paths: &Vec<PathSegment>,
+        paths: &[PathSegment],
     ) -> Result<Option<Vec<PathSegment>>, Error> {
         Ok(if coord_text.is_empty() {
             None
@@ -356,7 +344,7 @@ impl GraphMask {
     pub fn load_optional_subsetting_multiple(
         &self,
         graph_storage: &GraphStorage,
-        count_types: &Vec<CountType>,
+        count_types: &[CountType],
     ) -> (
         Option<IntervalContainer>,
         Vec<Option<ActiveTable>>,
@@ -539,7 +527,7 @@ impl AbacusByTotal {
         }
     }
 
-    pub fn construct_hist_from_set(&self, indices: &Vec<usize>) -> Vec<usize> {
+    pub fn construct_hist_from_set(&self, indices: &[usize]) -> Vec<usize> {
         log::debug!("constructing histogram..");
         let mut hist: Vec<usize> = vec![0; self.groups.len() + 1];
 
@@ -576,7 +564,7 @@ impl AbacusByTotal {
     pub fn construct_hist_bps_of_subset(
         &self,
         graph_storage: &GraphStorage,
-        indices: &Vec<usize>,
+        indices: &[usize],
         uncovered_bps: HashMap<u64, usize>,
     ) -> Vec<usize> {
         log::debug!("constructing bp histogram..");
@@ -691,19 +679,31 @@ mod tests {
 
     fn get_graph_storage_path_segments() -> GraphStorage {
         GraphStorage::from_path_segments(vec![
-            PathSegment::from_str("s1#2#2"),
-            PathSegment::from_str("s1#1#2"),
-            PathSegment::from_str("s1#1#1"),
-            PathSegment::from_str("s2#1#2"),
+            PathSegment::create_from_str("s1#2#2"),
+            PathSegment::create_from_str("s1#1#2"),
+            PathSegment::create_from_str("s1#1#1"),
+            PathSegment::create_from_str("s2#1#2"),
         ])
     }
 
     fn get_load_groups_expected_hashmap(groups: [&str; 4]) -> HashMap<PathSegment, String> {
         HashMap::from([
-            (PathSegment::from_str("s1#1#1"), groups[0].to_string()),
-            (PathSegment::from_str("s1#1#2"), groups[1].to_string()),
-            (PathSegment::from_str("s1#2#2"), groups[2].to_string()),
-            (PathSegment::from_str("s2#1#2"), groups[3].to_string()),
+            (
+                PathSegment::create_from_str("s1#1#1"),
+                groups[0].to_string(),
+            ),
+            (
+                PathSegment::create_from_str("s1#1#2"),
+                groups[1].to_string(),
+            ),
+            (
+                PathSegment::create_from_str("s1#2#2"),
+                groups[2].to_string(),
+            ),
+            (
+                PathSegment::create_from_str("s2#1#2"),
+                groups[3].to_string(),
+            ),
         ])
     }
 
@@ -771,8 +771,8 @@ s2#1#2\tg2";
     #[test]
     fn test_load_coord_list_file() -> Result<(), Error> {
         let expected = Some(vec![
-            PathSegment::from_str("s1#1#1:0-99"),
-            PathSegment::from_str("s1#1#1:25-109"),
+            PathSegment::create_from_str("s1#1#1:0-99"),
+            PathSegment::create_from_str("s1#1#1:25-109"),
         ]);
         let text = "s1#1#1\t0\t99
 s1#1#1\t25\t109";
@@ -814,7 +814,7 @@ s1#1#1\t25\t109";
     #[test]
     fn test_complement_with_group_assignments_coord_with_group_name() -> Result<(), Error> {
         let expected = Some(vec![get_path_segment_with_coordinates(8, 6)]);
-        let coords = Some(vec![PathSegment::from_str("g1")]);
+        let coords = Some(vec![PathSegment::create_from_str("g1")]);
         let groups = HashMap::from([(get_path_segment_with_coordinates(8, 6), "g1".to_string())]);
         let calculated = GraphMask::complement_with_group_assignments(coords, &groups)?;
         assert_eq!(calculated, expected);
@@ -824,11 +824,11 @@ s1#1#1\t25\t109";
     #[test]
     fn test_complement_with_group_assignments_coord_with_group_name_invalid() {
         let groups = HashMap::from([
-            (PathSegment::from_str("a#0"), "g1".to_string()),
-            (PathSegment::from_str("b#0"), "g1".to_string()),
+            (PathSegment::create_from_str("a#0"), "g1".to_string()),
+            (PathSegment::create_from_str("b#0"), "g1".to_string()),
         ]);
 
-        let coords = Some(vec![PathSegment::from_str("g1:1-5")]);
+        let coords = Some(vec![PathSegment::create_from_str("g1:1-5")]);
         let result = GraphMask::complement_with_group_assignments(coords, &groups);
         assert!(
             result.is_err(),
@@ -840,11 +840,11 @@ s1#1#1\t25\t109";
     fn test_complement_with_group_assignments_coord_with_invalid_name() -> Result<(), Error> {
         let expected: Option<Vec<PathSegment>> = Some(Vec::new());
         let groups = HashMap::from([
-            (PathSegment::from_str("a#0"), "g1".to_string()),
-            (PathSegment::from_str("b#0"), "g1".to_string()),
+            (PathSegment::create_from_str("a#0"), "g1".to_string()),
+            (PathSegment::create_from_str("b#0"), "g1".to_string()),
         ]);
 
-        let coords = Some(vec![PathSegment::from_str("invalid")]);
+        let coords = Some(vec![PathSegment::create_from_str("invalid")]);
         let calculated = GraphMask::complement_with_group_assignments(coords, &groups)?;
         assert_eq!(calculated, expected);
         Ok(())

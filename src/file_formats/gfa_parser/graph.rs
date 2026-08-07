@@ -21,6 +21,15 @@ static PATHID_COORDS: Lazy<Regex> = Lazy::new(|| Regex::new(r"^(.+):([0-9]+)-([0
 
 static METHOD_CALL_COUNT: AtomicUsize = AtomicUsize::new(0);
 
+type NodesWithMetadata = (
+    HashMap<Vec<u8>, ItemId>,
+    Vec<usize>,
+    Vec<PathSegment>,
+    Vec<u32>,
+    Option<Vec<(u64, u64)>>,
+    bool, // Whether there was a meta node
+);
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
 pub enum Orientation {
     #[default]
@@ -293,17 +302,7 @@ impl GraphStorage {
         (edge2id, edge_count, degree)
     }
 
-    pub fn parse_nodes_gfa(
-        gfa_file: &str,
-        k: Option<usize>,
-    ) -> (
-        HashMap<Vec<u8>, ItemId>,
-        Vec<usize>,
-        Vec<PathSegment>,
-        Vec<u32>,
-        Option<Vec<(u64, u64)>>,
-        bool, // Whether there was a meta node
-    ) {
+    pub fn parse_nodes_gfa(gfa_file: &str, k: Option<usize>) -> NodesWithMetadata {
         let mut buf = vec![];
         let mut data = bufreader_from_compressed_gfa(gfa_file);
         let mut count_nodes = 0;
@@ -344,9 +343,9 @@ impl GraphStorage {
                 let offset = iter
                     .position(|&x| x == b'\t' || x == b'\n' || x == b'\r')
                     .unwrap();
-                if k.is_some() {
+                if let Some(raw_k) = k {
                     let (left, right) =
-                        get_extremities(&buf[start_sequence..start_sequence + offset], k.unwrap());
+                        get_extremities(&buf[start_sequence..start_sequence + offset], raw_k);
                     extremities.push((left, right));
                 }
                 node_lens.push(offset as u32);
@@ -399,7 +398,7 @@ impl GraphStorage {
         let start = iter.position(|&x| x == b'\t').unwrap() + 1;
         let offset = iter.position(|&x| x == b'\t').unwrap();
         let path_name = str::from_utf8(&data[start..start + offset]).unwrap();
-        PathSegment::from_str(path_name)
+        PathSegment::create_from_str(path_name)
     }
 
     pub fn parse_walk_segment(data: &[u8]) -> PathSegment {
@@ -479,7 +478,7 @@ impl PathSegment {
         true
     }
 
-    pub fn from_str(s: &str) -> Self {
+    pub fn create_from_str(s: &str) -> Self {
         let mut res = PathSegment {
             sample: s.to_string(),
             haplotype: None,
@@ -536,7 +535,7 @@ impl PathSegment {
     }
 
     pub fn from_str_start_end(s: &str, start: usize, end: usize) -> Self {
-        let mut segment = Self::from_str(s);
+        let mut segment = Self::create_from_str(s);
         segment.start = Some(start);
         segment.end = Some(end);
         segment

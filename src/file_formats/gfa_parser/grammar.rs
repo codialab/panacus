@@ -108,7 +108,7 @@ impl Grammar {
         l.push(item_id)
     }
 
-    pub fn push_down_values(&self, values: &mut Vec<u32>, node2rule_id: &[usize]) {
+    pub fn push_down_values(&self, values: &mut [u32], node2rule_id: &[usize]) {
         let sorting = self.get_topological_sort(node2rule_id);
         // check topological sorting:
         let mut seen: HashSet<ItemId> = HashSet::new();

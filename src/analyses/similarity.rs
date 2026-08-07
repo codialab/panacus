@@ -6,7 +6,6 @@ use crate::analysis_parameter::ClusterMethod;
 use crate::coverage_matrix::CoverageMatrix;
 use crate::util::get_default_plot_downloads;
 use crate::{html_report::ReportItem, io::write_metadata_comments};
-use std::usize;
 
 use super::AnalysisSection;
 
@@ -139,8 +138,8 @@ impl Similarity {
     }
 }
 
-fn sort_by_indices<T>(list: &mut Vec<T>, indices: &Vec<usize>) {
-    let mut indices = indices.clone();
+fn sort_by_indices<T>(list: &mut [T], indices: &[usize]) {
+    let mut indices = indices.to_vec();
     for i in 0..indices.len() {
         while i != indices[i] {
             let new_i = indices[i];
@@ -164,7 +163,7 @@ fn get_order_from_dendrogram(dend: &Dendrogram<f32>) -> Vec<usize> {
     indices
 }
 
-fn get_table_string(table: &Vec<Vec<f32>>, groups: &Vec<String>) -> String {
+fn get_table_string(table: &[Vec<f32>], groups: &Vec<String>) -> String {
     let mut res = String::new();
     res.push_str("group");
     for group in groups {
@@ -181,7 +180,7 @@ fn get_table_string(table: &Vec<Vec<f32>>, groups: &Vec<String>) -> String {
     res
 }
 
-fn euclidean(row1: &Vec<f32>, row2: &Vec<f32>) -> f32 {
+fn euclidean(row1: &[f32], row2: &[f32]) -> f32 {
     row1.iter()
         .zip(row2.iter())
         .map(|(v1, v2)| (v1 - v2).powf(2.0))
@@ -189,7 +188,7 @@ fn euclidean(row1: &Vec<f32>, row2: &Vec<f32>) -> f32 {
         .sqrt()
 }
 
-fn calculate_distances(table: &Vec<Vec<f32>>) -> Vec<f32> {
+fn calculate_distances(table: &[Vec<f32>]) -> Vec<f32> {
     let mut condensed = vec![];
     for row in 0..table.len() - 1 {
         for col in row + 1..table.len() {

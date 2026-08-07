@@ -84,7 +84,6 @@ impl NodeDistribution {
         let node_names = matrix.get_feature_names();
         let points: Vec<(String, u32, f64)> = multizip((
             (0..node_lens.len())
-                .into_iter()
                 .map(|id| node_names[id].to_string())
                 .collect::<Vec<String>>(),
             countables.iter().copied().map(|x| x as u32),

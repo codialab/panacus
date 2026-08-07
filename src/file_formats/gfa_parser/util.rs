@@ -464,7 +464,7 @@ pub fn parse_path_identifier(data: &[u8]) -> (PathSegment, &[u8]) {
     let offset = iter.position(|&x| x == b'\t').unwrap();
     let path_name = str::from_utf8(&data[start..start + offset]).unwrap();
     (
-        PathSegment::from_str(path_name),
+        PathSegment::create_from_str(path_name),
         &data[start + offset + 1..],
     )
 }

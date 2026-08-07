@@ -31,17 +31,15 @@ impl MatrixBasedAnalysis for CoverageLine {
             String::new(),
             String::new(),
         ]];
-        let mut output_columns = Vec::new();
-        output_columns.push(
-            self.hist
-                .as_ref()
-                .unwrap()
-                .get_hist_values()
-                .iter()
-                .map(|x| *x as f64)
-                .skip(1)
-                .collect(),
-        );
+        let output_columns = vec![self
+            .hist
+            .as_ref()
+            .unwrap()
+            .get_hist_values()
+            .iter()
+            .map(|x| *x as f64)
+            .skip(1)
+            .collect()];
         header_cols.push(vec![
             "hist".to_string(),
             matrix.get_feature_type().to_string(),

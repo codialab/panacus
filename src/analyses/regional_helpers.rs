@@ -3,7 +3,6 @@ use std::{
     fs::File,
     io::{BufReader, Read},
     iter::{self},
-    usize,
 };
 
 use crate::{
@@ -189,7 +188,7 @@ fn get_window_ranges(
     window_size: usize,
     contig_start: usize,
     ref_length: usize,
-    allowed_segments: &Vec<PathSegment>,
+    allowed_segments: &[PathSegment],
 ) -> Vec<(usize, usize)> {
     let windows = get_window_grid(window_size, contig_start, ref_length);
 
@@ -198,7 +197,7 @@ fn get_window_ranges(
     }
 
     // Overlap prospective windows with allowed_segments
-    let mut allowed_segments = allowed_segments.clone();
+    let mut allowed_segments = allowed_segments.to_vec();
     allowed_segments.sort();
     let allowed_segments: Vec<(usize, usize)> = allowed_segments
         .into_iter()
@@ -256,8 +255,8 @@ fn get_window_ranges(
 
 fn cover_windows_with_reference_nodes(
     window_ranges: Vec<(usize, usize)>,
-    ref_nodes: &Vec<(ItemId, Orientation)>,
-    node_lens: &Vec<u32>,
+    ref_nodes: &[(ItemId, Orientation)],
+    node_lens: &[u32],
     contig_start: usize,
 ) -> Vec<Window> {
     let mut current_window_index = 0;

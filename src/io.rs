@@ -62,7 +62,7 @@ pub fn parse_bed_to_path_segments<R: Read>(
         }
 
         if fields.len() == 1 {
-            segments.push(PathSegment::from_str(path_name));
+            segments.push(PathSegment::create_from_str(path_name));
         } else if fields.len() >= 3 {
             let start = usize::from_str(fields[1]).unwrap_or_else(|_| {
                 panic!("error line {}: `{}` is not an usize", i + 1, fields[1])
@@ -134,7 +134,7 @@ pub fn parse_groups<R: Read>(data: &mut BufReader<R>) -> Result<Vec<(PathSegment
             return Err(Error::new(ErrorKind::InvalidData, msg));
         }
 
-        let path_seg = PathSegment::from_str(columns[0]);
+        let path_seg = PathSegment::create_from_str(columns[0]);
         res.push((path_seg, columns[1].to_string()));
 
         i += 1;

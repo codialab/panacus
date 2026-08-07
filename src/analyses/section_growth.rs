@@ -317,9 +317,9 @@ pub struct Hist3D {
 
 impl Hist3D {
     pub fn from_abaci(
-        a: &Vec<usize>,
+        a: &[usize],
         n_a: usize,
-        b: &Vec<usize>,
+        b: &[usize],
         n_b: usize,
         matrix: &CoverageMatrix,
     ) -> Self {
@@ -334,9 +334,9 @@ impl Hist3D {
     }
 
     fn construct_hist_bps(
-        a: &Vec<usize>,
+        a: &[usize],
         n_a: usize,
-        b: &Vec<usize>,
+        b: &[usize],
         n_b: usize,
         matrix: &CoverageMatrix,
     ) -> Vec<Vec<usize>> {

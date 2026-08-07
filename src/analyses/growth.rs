@@ -175,7 +175,7 @@ impl Growth {
 }
 
 #[allow(dead_code)]
-fn get_regression(hist: &Vec<f64>) -> (f64, f64) {
+fn get_regression(hist: &[f64]) -> (f64, f64) {
     let x: Vec<f64> = (1..hist.len()).map(|x| x as f64).collect();
     let log_x: Vec<f64> = x
         .iter()

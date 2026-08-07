@@ -19,20 +19,29 @@ use super::{abacus::GraphMask, graph::GraphStorage, ItemId, Orientation, PathSeg
 
 const CHUNK_SIZE: usize = 8192;
 
+pub struct UpdateConfig<'a> {
+    pub num_path: usize,
+    pub offset: usize,
+    pub include_coords: &'a [(usize, usize)],
+    pub exclude_coords: &'a [(usize, usize)],
+}
+
+type ParsedItemTable = (
+    ItemTable,
+    Option<ActiveTable>,
+    Option<IntervalContainer>,
+    HashMap<PathSegment, (u32, u32)>,
+    HashMap<PathSegment, Vec<(ItemId, Orientation)>>,
+);
+
 pub fn parse_gfa_paths_walks<R: Read>(
     data: &mut BufReader<R>,
     graph_mask: &GraphMask,
     graph_storage: &GraphStorage,
     grammar: &Grammar,
     count: &CountType,
-    paths_to_collect: &Vec<PathSegment>,
-) -> (
-    ItemTable,
-    Option<ActiveTable>,
-    Option<IntervalContainer>,
-    HashMap<PathSegment, (u32, u32)>,
-    HashMap<PathSegment, Vec<(ItemId, Orientation)>>,
-) {
+    paths_to_collect: &[PathSegment],
+) -> ParsedItemTable {
     log::info!("parsing path + walk sequences");
     let mut item_table = ItemTable::new(graph_storage.path_segments.len());
 
@@ -156,6 +165,12 @@ pub fn parse_gfa_paths_walks<R: Read>(
                     log::info!("Collected: {:?}", path_seg);
                     collected_paths.insert(path_seg.clone(), sids.clone());
                 }
+                let config = UpdateConfig {
+                    num_path,
+                    offset: start,
+                    include_coords,
+                    exclude_coords,
+                };
                 match count {
                     CountType::Node | CountType::Bp => {
                         let (node_len, bp_len) = update_tables(
@@ -163,24 +178,18 @@ pub fn parse_gfa_paths_walks<R: Read>(
                             &mut subset_covered_bps.as_mut(),
                             &mut fully_included,
                             &mut exclude_table.as_mut(),
-                            num_path,
                             graph_storage,
                             sids,
-                            include_coords,
-                            exclude_coords,
-                            start,
+                            config,
                         );
                         paths_len.insert(path_seg, (node_len as u32, bp_len as u32));
                     }
                     CountType::Edge => update_tables_edgecount(
                         &mut item_table,
                         &mut exclude_table.as_mut(),
-                        num_path,
                         graph_storage,
                         sids,
-                        include_coords,
-                        exclude_coords,
-                        start,
+                        config,
                     ),
                 };
             }
@@ -463,15 +472,18 @@ pub fn parse_path_identifier(data: &[u8]) -> (PathSegment, &[u8]) {
 pub fn update_tables(
     item_table: &mut ItemTable,
     subset_covered_bps: &mut Option<&mut IntervalContainer>,
-    fully_included: &mut Vec<bool>,
+    fully_included: &mut [bool],
     exclude_table: &mut Option<&mut ActiveTable>,
-    num_path: usize,
     graph_storage: &GraphStorage,
     path: Vec<(ItemId, Orientation)>,
-    include_coords: &[(usize, usize)],
-    exclude_coords: &[(usize, usize)],
-    offset: usize,
+    config: UpdateConfig<'_>,
 ) -> (usize, usize) {
+    let UpdateConfig {
+        num_path,
+        offset,
+        include_coords,
+        exclude_coords,
+    } = config;
     let mut i = 0;
     let mut j = 0;
     let mut p = offset;
@@ -613,13 +625,17 @@ pub fn update_tables(
 pub fn update_tables_edgecount(
     item_table: &mut ItemTable,
     exclude_table: &mut Option<&mut ActiveTable>,
-    num_path: usize,
     graph_storage: &GraphStorage,
     path: Vec<(ItemId, Orientation)>,
-    include_coords: &[(usize, usize)],
-    exclude_coords: &[(usize, usize)],
-    offset: usize,
+    config: UpdateConfig<'_>,
 ) {
+    let UpdateConfig {
+        num_path,
+        offset,
+        include_coords,
+        exclude_coords,
+    } = config;
+
     let mut i = 0;
     let mut j = 0;
     let mut p = offset;

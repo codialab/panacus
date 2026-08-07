@@ -43,6 +43,18 @@ pub use hist::Hist3D;
 pub use hist::ThresholdContainer;
 pub use sparse_matrix::SparseMatrix;
 
+type ItemTableWithMetatdata = (
+    ItemTable,
+    Vec<String>,
+    Vec<usize>,
+    Vec<String>,
+    HashMap<PathSegment, (u32, u32)>,
+    HashMap<String, f64>,
+    Positions,
+);
+type PathLens = HashMap<PathSegment, (u32, u32)>;
+type PathCollection = HashMap<PathSegment, Vec<(ItemId, Orientation)>>;
+
 pub struct GfaParser {
     // Inputs
     filename: String,
@@ -493,13 +505,7 @@ impl GfaParser {
         )
     }
 
-    pub fn get_abacus_by_total(
-        &self,
-    ) -> (
-        AbacusByTotal,
-        HashMap<PathSegment, (u32, u32)>,
-        HashMap<PathSegment, Vec<(ItemId, Orientation)>>,
-    ) {
+    pub fn get_abacus_by_total(&self) -> (AbacusByTotal, PathLens, PathCollection) {
         let mut data = bufreader_from_compressed_gfa(&self.filename);
         let (abacus, path_lens) = AbacusByTotal::from_gfa(
             &mut data,
@@ -517,16 +523,8 @@ impl GfaParser {
         graph_mask: &GraphMask,
         graph_storage: &GraphStorage,
         count: CountType,
-        paths_to_collect: &Vec<PathSegment>,
-    ) -> anyhow::Result<(
-        ItemTable,
-        Vec<String>,
-        Vec<usize>,
-        Vec<String>,
-        HashMap<PathSegment, (u32, u32)>,
-        HashMap<String, f64>,
-        Positions,
-    )> {
+        paths_to_collect: &[PathSegment],
+    ) -> anyhow::Result<ItemTableWithMetatdata> {
         log::info!("parsing path + walk sequences");
         let mut data = bufreader_from_compressed_gfa(&self.filename);
         let (item_table, exclude_table, subset_covered_bps, paths_len, collected_paths) =

@@ -47,7 +47,7 @@ struct VcfStats {
 }
 
 impl VcfStats {
-    fn to_file_info(self) -> FileInfo {
+    fn into_file_info(self) -> FileInfo {
         let mut info = FileInfo::new("vcf");
         info.add_info("Number of samples", &self.num_samples.to_string());
         info.add_info("Number of variants", &self.num_variants.to_string());
@@ -110,7 +110,7 @@ impl VcfParser {
         })
     }
 
-    fn generate_hist_from_reader(self: Box<Self>, buf_reader: impl BufRead) -> Hist {
+    fn generate_hist_from_reader(self: Self, buf_reader: impl BufRead) -> Hist {
         let mut lines = buf_reader.lines().map(|l| l.expect("Failed to read line"));
         let mut header = VcfHeader::parse(&mut lines).expect("Failed to parse header");
         let paths = std::mem::take(&mut header.paths);
@@ -145,10 +145,7 @@ impl VcfParser {
         hist
     }
 
-    fn generate_matrix_from_reader(
-        mut self: Box<Self>,
-        buf_reader: impl BufRead,
-    ) -> CoverageMatrix {
+    fn generate_matrix_from_reader(mut self: Self, buf_reader: impl BufRead) -> CoverageMatrix {
         let mut lines = buf_reader.lines().map(|l| l.expect("Failed to read line"));
 
         let mut header = VcfHeader::parse(&mut lines).expect("Failed to parse header");
@@ -169,8 +166,10 @@ impl VcfParser {
             FileInfo::new("vcf"), // Pass blank FileInfo initially
         );
 
-        let mut stats = VcfStats::default();
-        stats.num_samples = paths.len();
+        let mut stats = VcfStats {
+            num_samples: paths.len(),
+            ..Default::default()
+        };
 
         let mut are_paths_initialized = false;
 
@@ -212,7 +211,7 @@ impl VcfParser {
                 stats.num_alleles += 1;
             }
         }
-        let file_info = stats.to_file_info();
+        let file_info = stats.into_file_info();
         matrix.set_file_info(file_info);
         matrix
     }
@@ -283,15 +282,15 @@ impl VcfParser {
                         });
                 } else {
                     sample_genotype.split(&['|', '/']).for_each(|x| {
-                        for i in 0..num_alts {
+                        for (i, allele_list) in allele_lists.iter_mut().enumerate().take(num_alts) {
                             if x == "." {
-                                allele_lists[i][idx].push(0);
+                                allele_list[idx].push(0);
                             } else {
                                 let value = x.parse::<usize>().expect("Allele is integer");
                                 if (i + 1) == value {
-                                    allele_lists[i][idx].push(1);
+                                    allele_list[idx].push(1);
                                 } else {
-                                    allele_lists[i][idx].push(0);
+                                    allele_list[idx].push(0);
                                 }
                             }
                         }
@@ -587,7 +586,7 @@ chr10	7	>13046>13130_6	C	G	60	.	AC=1;AF=0.0212766;AN=47;NS=232;LV=0;ORIGIN=chr10
     #[test]
     fn test_vcf_stats_to_file_info() {
         let stats = VcfStats::default();
-        let info = stats.to_file_info();
+        let info = stats.into_file_info();
         assert_eq!(info.get_filetype(), "vcf");
         assert_eq!(info.iterate_infos().count(), 4);
     }

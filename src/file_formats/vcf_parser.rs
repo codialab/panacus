@@ -110,7 +110,7 @@ impl VcfParser {
         })
     }
 
-    fn generate_hist_from_reader(self: Self, buf_reader: impl BufRead) -> Hist {
+    fn generate_hist_from_reader(self, buf_reader: impl BufRead) -> Hist {
         let mut lines = buf_reader.lines().map(|l| l.expect("Failed to read line"));
         let mut header = VcfHeader::parse(&mut lines).expect("Failed to parse header");
         let paths = std::mem::take(&mut header.paths);
@@ -145,7 +145,7 @@ impl VcfParser {
         hist
     }
 
-    fn generate_matrix_from_reader(mut self: Self, buf_reader: impl BufRead) -> CoverageMatrix {
+    fn generate_matrix_from_reader(mut self, buf_reader: impl BufRead) -> CoverageMatrix {
         let mut lines = buf_reader.lines().map(|l| l.expect("Failed to read line"));
 
         let mut header = VcfHeader::parse(&mut lines).expect("Failed to parse header");

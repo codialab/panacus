@@ -548,23 +548,19 @@ impl PathSegment {
     }
 
     pub fn id(&self) -> String {
-        if self.haplotype.is_some() {
+        if let Some(haplotype) = self.haplotype.as_ref() {
             format!(
                 "{}#{}{}",
                 self.sample,
-                self.haplotype.as_ref().unwrap(),
-                if self.seqid.is_some() {
-                    "#".to_owned() + self.seqid.as_ref().unwrap().as_str()
+                haplotype,
+                if let Some(seqid) = self.seqid.as_ref() {
+                    "#".to_owned() + seqid.as_str()
                 } else {
                     "".to_string()
                 }
             )
-        } else if self.seqid.is_some() {
-            format!(
-                "{}#*#{}",
-                self.sample,
-                self.seqid.as_ref().unwrap().as_str()
-            )
+        } else if let Some(seqid) = self.seqid.as_ref() {
+            format!("{}#*#{}", self.sample, seqid.as_str())
         } else {
             self.sample.clone()
         }
@@ -581,10 +577,9 @@ impl PathSegment {
     }
 
     pub fn coords(&self) -> Option<(usize, usize)> {
-        if self.start.is_some() && self.end.is_some() {
-            Some((self.start.unwrap(), self.end.unwrap()))
-        } else {
-            None
+        match (self.start, self.end) {
+            (Some(s), Some(e)) => Some((s, e)),
+            _ => None,
         }
     }
 }

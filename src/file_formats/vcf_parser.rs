@@ -112,8 +112,10 @@ impl VcfParser {
 
     fn generate_hist_from_reader(self, buf_reader: impl BufRead) -> Hist {
         let mut lines = buf_reader.lines().map(|l| l.expect("Failed to read line"));
-        let mut header = VcfHeader::parse(&mut lines).expect("Failed to parse header");
-        let paths = std::mem::take(&mut header.paths);
+        // We need to still parse the header (even though we don't need it),
+        // so it gets removed from lines, and we only have variant lines left
+        let _header = VcfHeader::parse(&mut lines).expect("Failed to parse header");
+        // let paths = std::mem::take(&mut header.paths);
         let run_id = format!(
             "{}-{}-{}",
             &self.filename,
@@ -122,15 +124,20 @@ impl VcfParser {
         );
         let run_name = run_id.clone();
         let mut hist =
-            Hist::from_maximum_coverage(paths.len(), self.count_type.to_string(), run_id, run_name);
+            Hist::without_maximum_coverage(self.count_type.to_string(), run_id, run_name);
+        let mut first_variant = true;
         for line in lines {
-            let variants = self
+            let (variants, max_coverage) = self
                 .parse_variant_line_to_count(&line)
                 .expect("Failed to parse variant");
+            if first_variant {
+                hist.set_maximum_coverage(max_coverage);
+                first_variant = false;
+            }
             for variant in variants {
                 let coverage = variant.value;
                 if coverage == 0 {
-                    log::info!("Variant has coverage 0: {}", variant.id);
+                    log::debug!("Variant has coverage 0: {}", variant.id);
                 }
                 match self.count_type {
                     VcfCountType::Variants => {
@@ -302,39 +309,48 @@ impl VcfParser {
     }
 
     /// Parses a variant line into simple counts, how often each allele appears
-    fn parse_variant_line_to_count<'a>(&self, line: &'a str) -> Result<Vec<Variant<'a, usize>>> {
-        self.parse_variant_line_base(line, |samples, num_alts, genotype_position| {
-            let mut counts = vec![0; num_alts];
-            samples.for_each(|sample| {
-                let sample_genotype = sample
-                    .split(":")
-                    .nth(genotype_position)
-                    .expect("Sample needs a genotype");
-                if !self.split_haplotypes {
-                    sample_genotype
-                        .split(&['|', '/'])
-                        .filter_map(|x| {
-                            if x == "." || x == "0" {
-                                None
-                            } else {
-                                Some(x.parse::<usize>().expect("Allele is integer"))
+    fn parse_variant_line_to_count<'a>(
+        &self,
+        line: &'a str,
+    ) -> Result<(Vec<Variant<'a, usize>>, usize)> {
+        let mut count_paths = 0;
+        Ok((
+            self.parse_variant_line_base(line, |samples, num_alts, genotype_position| {
+                let mut counts = vec![0; num_alts];
+                samples.for_each(|sample| {
+                    let sample_genotype = sample
+                        .split(":")
+                        .nth(genotype_position)
+                        .expect("Sample needs a genotype");
+                    if !self.split_haplotypes {
+                        count_paths += 1;
+                        sample_genotype
+                            .split(&['|', '/'])
+                            .filter_map(|x| {
+                                if x == "." || x == "0" {
+                                    None
+                                } else {
+                                    Some(x.parse::<usize>().expect("Allele is integer"))
+                                }
+                            })
+                            .unique()
+                            .for_each(|x| counts[x - 1] += 1);
+                    } else {
+                        sample_genotype.split(&['|', '/']).for_each(|x| {
+                            count_paths += 1;
+                            if x != "." {
+                                let value = x.parse::<usize>().expect("Allele is integer");
+                                if value > 0 {
+                                    counts[value - 1] += 1;
+                                }
                             }
-                        })
-                        .unique()
-                        .for_each(|x| counts[x - 1] += 1);
-                } else {
-                    sample_genotype.split(&['|', '/']).for_each(|x| {
-                        if x != "." {
-                            let value = x.parse::<usize>().expect("Allele is integer");
-                            if value > 0 {
-                                counts[value - 1] += 1;
-                            }
-                        }
-                    });
-                }
-            });
-            counts
-        })
+                        });
+                    }
+                });
+                counts
+            })?,
+            count_paths,
+        ))
     }
 
     /// Takes a line that contains a variant (so it does not start with #)
@@ -522,7 +538,7 @@ chr10	7	>13046>13130_6	C	G	60	.	AC=1;AF=0.0212766;AN=47;NS=232;LV=0;ORIGIN=chr10
     fn test_vcf_parse_line_to_count_haplotypes() {
         let line = "20\t14370\trs6054257\tG\tA\t29\tPASS\tNS=3;DP=14;AF=0.5;DB;H2\tGT:GQ:DP:HQ\t0|0:48:1:51,51\t1|0:48:8:51,51\t1/1:43:5:.,.";
         let parser = VcfParser::new("", VcfCountType::Variants, true, None).unwrap();
-        let mut variants = parser.parse_variant_line_to_count(line).unwrap();
+        let (mut variants, _) = parser.parse_variant_line_to_count(line).unwrap();
         assert_eq!(variants.len(), 1);
         let variant = variants.remove(0);
         assert_eq!(variant.chrom, "20");
@@ -536,7 +552,7 @@ chr10	7	>13046>13130_6	C	G	60	.	AC=1;AF=0.0212766;AN=47;NS=232;LV=0;ORIGIN=chr10
     fn test_vcf_parse_line_to_count_samples() {
         let line = "20\t14370\trs6054257\tG\tA\t29\tPASS\tNS=3;DP=14;AF=0.5;DB;H2\tGT:GQ:DP:HQ\t0|0:48:1:51,51\t1|0:48:8:51,51\t1/1:43:5:.,.";
         let parser = VcfParser::new("", VcfCountType::Variants, false, None).unwrap();
-        let mut variants = parser.parse_variant_line_to_count(line).unwrap();
+        let (mut variants, _) = parser.parse_variant_line_to_count(line).unwrap();
         assert_eq!(variants.len(), 1);
         let variant = variants.remove(0);
         assert_eq!(variant.chrom, "20");

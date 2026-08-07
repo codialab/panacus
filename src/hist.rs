@@ -1,6 +1,6 @@
 use std::ops::Index;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct Hist {
     count_of_features: usize,
     hist: Vec<usize>,
@@ -24,6 +24,34 @@ impl Hist {
             run_id,
             run_name,
         }
+    }
+
+    /// Hold out setting maximum coverage for file types
+    /// where we only know the maximum coverage at the first
+    /// element (e.g. VCF files where we need to parse the
+    /// first variant to know the max coverage)
+    pub fn without_maximum_coverage(
+        feature_type: String,
+        run_id: String,
+        run_name: String,
+    ) -> Self {
+        Self {
+            count_of_features: 0,
+            hist: Vec::new(),
+            feature_type,
+            run_id,
+            run_name,
+        }
+    }
+
+    /// Increase the size of the internal histogram,
+    /// to be used in combination with the without_maximum_coverage()
+    /// constructor.
+    pub fn set_maximum_coverage(&mut self, maximum_coverage: usize) {
+        if maximum_coverage + 1 < self.hist.len() {
+            log::error!("Truncating histogram!");
+        }
+        self.hist.resize(maximum_coverage + 1, 0);
     }
 
     #[cfg(test)]
@@ -72,6 +100,7 @@ impl Hist {
     }
 
     /// Gets the maximum allowed coverage for this histogram.
+    #[inline]
     pub fn get_maximum_coverage(&self) -> usize {
         self.hist.len() - 1
     }

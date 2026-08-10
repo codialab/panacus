@@ -21,8 +21,7 @@ impl HistBasedAnalysis for Hist {
             String::new(),
             String::new(),
         ]];
-        let mut output_columns = Vec::new();
-        output_columns.push(hist.get_hist_values().iter().map(|x| *x as f64).collect());
+        let output_columns = vec![hist.get_hist_values().iter().map(|x| *x as f64).collect()];
         header_cols.push(vec![
             "hist".to_string(),
             hist.get_feature_type().to_string(),

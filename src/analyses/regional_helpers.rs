@@ -12,8 +12,8 @@ use crate::{
 
 pub fn sort_values(
     file: &str,
-    reference_names: &mut Vec<String>,
-    windows: &mut Vec<Vec<html_report::Window>>,
+    reference_names: &mut [String],
+    windows: &mut [Vec<html_report::Window>],
 ) {
     let f = File::open(file).expect("Order file must exist");
     let mut reader = BufReader::new(f);
@@ -139,7 +139,7 @@ pub fn get_close_nodes(
 //     flipped
 // }
 
-pub fn get_ref_length(ref_nodes: &Vec<(ItemId, Orientation)>, node_lens: &Vec<u32>) -> u32 {
+pub fn get_ref_length(ref_nodes: &[(ItemId, Orientation)], node_lens: &[u32]) -> u32 {
     let length = ref_nodes
         .iter()
         .map(|(node, _)| node_lens[node.0 as usize])
@@ -147,11 +147,12 @@ pub fn get_ref_length(ref_nodes: &Vec<(ItemId, Orientation)>, node_lens: &Vec<u3
     length
 }
 
+type DirectedPath = Vec<(ItemId, Orientation)>;
+
 pub fn split_ref_paths(
-    ref_paths: HashMap<PathSegment, &Vec<(ItemId, Orientation)>>,
-) -> HashMap<PathSegment, HashMap<PathSegment, &Vec<(ItemId, Orientation)>>> {
-    let mut result: HashMap<PathSegment, HashMap<PathSegment, &Vec<(ItemId, Orientation)>>> =
-        HashMap::new();
+    ref_paths: HashMap<PathSegment, &DirectedPath>,
+) -> HashMap<PathSegment, HashMap<PathSegment, &DirectedPath>> {
+    let mut result: HashMap<PathSegment, HashMap<PathSegment, &DirectedPath>> = HashMap::new();
     for (path, path_content) in ref_paths {
         let coord_less_path = path.clear_coords();
         result
@@ -350,9 +351,9 @@ fn augment_windows_with_non_reference_nodes(
     ref_nodes: &Vec<(ItemId, Orientation)>,
     ref_windows: Vec<Window>,
     neighbors: &HashMap<(ItemId, Orientation), HashSet<ItemId>>,
-) -> Vec<(Vec<(ItemId, usize)>, usize, usize)> {
+) -> Vec<UndirectedNodeBucket> {
     let close_nodes = get_close_nodes(ref_nodes, neighbors);
-    let windows: Vec<(Vec<(ItemId, usize)>, usize, usize)> = ref_windows
+    let windows: Vec<UndirectedNodeBucket> = ref_windows
         .into_iter()
         .map(|(window, start, end)| {
             (
@@ -428,16 +429,23 @@ fn merge_small_windows(
     window_grid
 }
 
-pub fn get_windows(
+/// list of Features + covered length, start_coord, end_coord
+type UndirectedNodeBucket = (Vec<(ItemId, usize)>, usize, usize);
+
+#[allow(dead_code)]
+fn get_windows(
     ref_nodes: &Vec<(ItemId, Orientation)>,
-    node_lens: &Vec<u32>,
-    window_size: usize,
+    node_lens: &[u32],
     neighbors: &HashMap<(ItemId, Orientation), HashSet<ItemId>>,
-    contig_start: usize,
     _log_windows: bool,
-    allowed_segments: &[PathSegment],
-    should_merge_small_windows: bool,
-) -> Vec<(Vec<(ItemId, usize)>, usize, usize)> {
+    window_config: WindowConfig,
+) -> Vec<UndirectedNodeBucket> {
+    let WindowConfig {
+        window_size,
+        contig_start,
+        allowed_segments,
+        should_merge_small_windows,
+    } = window_config;
     let ref_length = get_ref_length(ref_nodes, node_lens) as usize;
 
     // Get window ranges, i.e., (start, end)-coordinates
@@ -462,16 +470,27 @@ pub fn get_windows(
 
 type DirectedNodeBucket = (Vec<(ItemId, IncludedEnds)>, usize, usize);
 
-pub fn get_edge_windows(
-    ref_nodes: &Vec<(ItemId, Orientation)>,
-    node_lens: &Vec<u32>,
+pub struct WindowConfig<'a> {
     window_size: usize,
+    contig_start: usize,
+    allowed_segments: &'a [PathSegment],
+    should_merge_small_windows: bool,
+}
+
+#[allow(dead_code)]
+fn get_edge_windows(
+    ref_nodes: &Vec<(ItemId, Orientation)>,
+    node_lens: &[u32],
     neighbors: &HashMap<(ItemId, Orientation), HashSet<(ItemId, Orientation)>>,
     edge2id: &HashMap<Edge, ItemId>,
-    contig_start: usize,
-    allowed_segments: &[PathSegment],
-    should_merge_small_windows: bool,
+    edge_window_config: WindowConfig,
 ) -> Vec<(Vec<ItemId>, usize, usize)> {
+    let WindowConfig {
+        window_size,
+        contig_start,
+        allowed_segments,
+        should_merge_small_windows,
+    } = edge_window_config;
     let close_nodes = get_close_nodes(
         ref_nodes,
         &neighbors

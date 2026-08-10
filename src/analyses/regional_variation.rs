@@ -113,7 +113,7 @@ impl RegionalVariation {
         }
     }
 
-    fn sort_values(&self, reference_names: &mut Vec<String>, windows: &mut Vec<Vec<Window>>) {
+    fn sort_values(&self, reference_names: &mut [String], windows: &mut [Vec<Window>]) {
         if let Some(filename) = self.order.as_ref() {
             sort_values(filename, reference_names, windows);
         }

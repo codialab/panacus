@@ -182,7 +182,7 @@ pub fn calc_growth(
     matrix: &CoverageMatrix,
     t_coverage: &Threshold,
     t_quorum: &Threshold,
-    order: &Vec<String>,
+    order: &[String],
 ) -> Vec<f64> {
     let n_paths = matrix.get_path_names().len();
     let mut res = vec![0.0; n_paths];
@@ -191,7 +191,11 @@ pub fn calc_growth(
     let q = f64::max(0.0, t_quorum.to_relative(n_paths));
     let feature_lengths = matrix.get_feature_lengths();
 
-    for i in 0..matrix.get_feature_count() {
+    for (i, feature_length) in feature_lengths
+        .iter()
+        .enumerate()
+        .take(matrix.get_feature_count())
+    {
         // If this feature appears less often than the coverage
         // skip it.
         if matrix.get_count_of_feature(i) < c {
@@ -200,7 +204,12 @@ pub fn calc_growth(
 
         let entry_indices: Vec<usize> = matrix.get_appearances_for_order(i, order);
         let mut entry_indices_index = 0;
-        for path_idx in entry_indices[0]..n_paths {
+        for (path_idx, path) in res
+            .iter_mut()
+            .enumerate()
+            .take(n_paths)
+            .skip(entry_indices[0])
+        {
             if entry_indices_index < entry_indices.len() - 1
                 && path_idx >= entry_indices[entry_indices_index + 1]
             {
@@ -210,7 +219,7 @@ pub fn calc_growth(
             let num_appearances = entry_indices_index + 1;
             let ratio = num_appearances as f64 / num_seen_paths as f64;
             if ratio >= q {
-                res[path_idx] += feature_lengths[i] as f64;
+                *path += *feature_length as f64;
             }
         }
     }

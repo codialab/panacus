@@ -269,9 +269,9 @@ fn calc_growth_union(hist: &Hist, t_coverage: &Threshold) -> Vec<f64> {
     for m in 1..n + 1 {
         let mut y: f64 = 0.0;
         n_fall_m += (n as f64 - m as f64 + 1.0).log2();
-        for i in c..n - m + 1 {
-            perc_mult[i] += (n as f64 - m as f64 - i as f64 + 1.0).log2();
-            y += ((hist.get_hist_values()[i] as f64).log2() + perc_mult[i] - n_fall_m).exp2();
+        for (i, perc_mult_value) in perc_mult.iter_mut().enumerate().take(n - m + 1).skip(c) {
+            *perc_mult_value += (n as f64 - m as f64 - i as f64 + 1.0).log2();
+            y += ((hist.get_hist_values()[i] as f64).log2() + *perc_mult_value - n_fall_m).exp2();
         }
 
         pangrowth[m - 1] = tot - y;
@@ -294,9 +294,14 @@ fn calc_growth_core(hist: &Hist, t_coverage: &Threshold) -> Vec<f64> {
     for m in 1..n + 1 {
         let mut y: f64 = 0.0;
         n_fall_m += (n as f64 - m as f64 + 1.0).log2();
-        for i in usize::max(m, c)..n + 1 {
-            perc_mult[i] += (i as f64 - m as f64 + 1.0).log2();
-            y += ((hist.get_hist_values()[i] as f64).log2() + perc_mult[i] - n_fall_m).exp2();
+        for (i, perc_mult_value) in perc_mult
+            .iter_mut()
+            .enumerate()
+            .take(n + 1)
+            .skip(usize::max(m, c))
+        {
+            *perc_mult_value += (i as f64 - m as f64 + 1.0).log2();
+            y += ((hist.get_hist_values()[i] as f64).log2() + *perc_mult_value - n_fall_m).exp2();
         }
         pangrowth[m - 1] = y;
     }
@@ -323,24 +328,34 @@ fn calc_growth_quorum(hist: &Hist, t_coverage: &Threshold, t_quorum: &Threshold)
         //100% quorum
         let mut yl: f64 = 0.0;
         n_fall_m += (n as f64 - m as f64 + 1.0).log2();
-        for i in usize::max(m, c)..n + 1 {
-            perc_mult[i] += (i as f64 - m as f64 + 1.0).log2();
-            yl += ((hist.get_hist_values()[i] as f64).log2() + perc_mult[i] - n_fall_m).exp2();
+        for (i, perc_mult_value) in perc_mult
+            .iter_mut()
+            .enumerate()
+            .take(n + 1)
+            .skip(usize::max(m, c))
+        {
+            *perc_mult_value += (i as f64 - m as f64 + 1.0).log2();
+            yl += ((hist.get_hist_values()[i] as f64).log2() + *perc_mult_value - n_fall_m).exp2();
         }
 
         //[m_quorum, 100) quorum
         let mut yr: f64 = 0.0;
-        for i in m_quorum..n {
+        for (i, row) in q.iter_mut().enumerate().take(n).skip(m_quorum) {
             let mut sum_q = 0.0;
             let mut add = false;
-            for j in usize::max(m_quorum, c)..m {
+            for (j, value) in row
+                .iter_mut()
+                .enumerate()
+                .take(m)
+                .skip(usize::max(m_quorum, c))
+            {
                 if n + j + 1 > i + m && j <= i {
-                    if q[i][j] == 0.0 {
-                        q[i][j] = choose(i, j);
+                    if *value == 0.0 {
+                        *value = choose(i, j);
                     }
-                    q[i][j] += (n as f64 - i as f64 - m as f64 + 1.0 + j as f64).log2();
-                    q[i][j] -= (m as f64 - j as f64).log2();
-                    sum_q += (q[i][j] + m_fact - n_fall_m).exp2();
+                    *value += (n as f64 - i as f64 - m as f64 + 1.0 + j as f64).log2();
+                    *value -= (m as f64 - j as f64).log2();
+                    sum_q += (*value + m_fact - n_fall_m).exp2();
                     add = true;
                 }
             }

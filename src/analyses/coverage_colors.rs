@@ -12,7 +12,10 @@ use crate::util::CountType;
 
 use super::AnalysisSection;
 
-static VIRIDIS: Lazy<Vec<(f64, (f64, f64, f64))>> = Lazy::new(|| {
+// red, green, blue (0 to 255)
+type RgbColor = (f64, f64, f64);
+
+static VIRIDIS: Lazy<Vec<(f64, RgbColor)>> = Lazy::new(|| {
     vec![
         (0.0, (253.0, 231.0, 37.0)),
         (0.25, (94.0, 201.0, 98.0)),

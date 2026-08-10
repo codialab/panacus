@@ -21,7 +21,7 @@ pub struct RegionalGrowth {
     window_size: usize,
     windows: Option<String>,
     normalize_windows: bool,
-    cache: OnceCell<Vec<(String, Vec<(Growth, usize, usize)>)>>,
+    cache: OnceCell<Vec<(String, Vec<GrowthWindow>)>>,
 }
 
 impl MatrixBasedAnalysis for RegionalGrowth {
@@ -103,6 +103,9 @@ impl MatrixBasedAnalysis for RegionalGrowth {
     }
 }
 
+/// growth, start_coord, end_coord
+type GrowthWindow = (Growth, usize, usize);
+
 impl RegionalGrowth {
     pub fn new(
         window_size: usize,
@@ -119,16 +122,13 @@ impl RegionalGrowth {
         }
     }
 
-    fn sort_values(&self, reference_names: &mut Vec<String>, windows: &mut Vec<Vec<Window>>) {
+    fn sort_values(&self, reference_names: &mut [String], windows: &mut [Vec<Window>]) {
         if let Some(filename) = self.order.as_ref() {
             sort_values(filename, reference_names, windows);
         }
     }
 
-    fn get_cached_data(
-        &self,
-        matrix: &CoverageMatrix,
-    ) -> &Vec<(String, Vec<(Growth, usize, usize)>)> {
+    fn get_cached_data(&self, matrix: &CoverageMatrix) -> &Vec<(String, Vec<GrowthWindow>)> {
         self.cache.get_or_init(|| {
             let mut error_counter = 0;
             let result = matrix

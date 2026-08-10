@@ -18,6 +18,8 @@ use crate::util::*;
 use super::graph::{GraphStorage, PathSegment};
 use super::util::parse_gfa_paths_walks;
 
+type CoordMap = HashMap<String, Vec<(usize, usize)>>;
+
 #[derive(Debug, PartialEq, Eq, Clone, Default)]
 pub struct GraphMaskParameters {
     pub positive_list: String,
@@ -305,8 +307,8 @@ impl GraphMask {
     ) -> (
         Option<IntervalContainer>,
         Option<ActiveTable>,
-        HashMap<String, Vec<(usize, usize)>>,
-        HashMap<String, Vec<(usize, usize)>>,
+        CoordMap,
+        CoordMap,
     ) {
         // *only relevant for bps count in combination with subset option*
         // this table stores the number of bps of nodes that are *partially* uncovered by subset
@@ -348,8 +350,8 @@ impl GraphMask {
     ) -> (
         Option<IntervalContainer>,
         Vec<Option<ActiveTable>>,
-        HashMap<String, Vec<(usize, usize)>>,
-        HashMap<String, Vec<(usize, usize)>>,
+        CoordMap,
+        CoordMap,
     ) {
         // *only relevant for bps count in combination with subset option*
         // this table stores the number of bps of nodes that are *partially* uncovered by subset

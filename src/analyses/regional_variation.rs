@@ -8,12 +8,14 @@ use crate::{
     util::get_default_plot_downloads,
 };
 
+type VariationBucket = (Variation, usize, usize);
+
 pub struct RegionalVariation {
     order: Option<String>,
     window_size: usize,
     windows: Option<String>,
     normalize_windows: bool,
-    cache: OnceCell<Vec<(String, Vec<(Variation, usize, usize)>)>>,
+    cache: OnceCell<Vec<(String, Vec<VariationBucket>)>>,
 }
 
 impl MatrixBasedAnalysis for RegionalVariation {
@@ -117,10 +119,7 @@ impl RegionalVariation {
         }
     }
 
-    fn get_cached_data(
-        &self,
-        matrix: &CoverageMatrix,
-    ) -> &Vec<(String, Vec<(Variation, usize, usize)>)> {
+    fn get_cached_data(&self, matrix: &CoverageMatrix) -> &Vec<(String, Vec<VariationBucket>)> {
         self.cache.get_or_init(|| {
             matrix
                 .get_regional_hists(self.window_size, self.window_size, self.windows.as_deref())

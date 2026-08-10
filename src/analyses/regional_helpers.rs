@@ -435,7 +435,7 @@ pub fn get_windows(
     neighbors: &HashMap<(ItemId, Orientation), HashSet<ItemId>>,
     contig_start: usize,
     _log_windows: bool,
-    allowed_segments: &Vec<PathSegment>,
+    allowed_segments: &[PathSegment],
     should_merge_small_windows: bool,
 ) -> Vec<(Vec<(ItemId, usize)>, usize, usize)> {
     let ref_length = get_ref_length(ref_nodes, node_lens) as usize;
@@ -460,6 +460,8 @@ pub fn get_windows(
     augment_windows_with_non_reference_nodes(ref_nodes, ref_windows, neighbors)
 }
 
+type DirectedNodeBucket = (Vec<(ItemId, IncludedEnds)>, usize, usize);
+
 pub fn get_edge_windows(
     ref_nodes: &Vec<(ItemId, Orientation)>,
     node_lens: &Vec<u32>,
@@ -467,7 +469,7 @@ pub fn get_edge_windows(
     neighbors: &HashMap<(ItemId, Orientation), HashSet<(ItemId, Orientation)>>,
     edge2id: &HashMap<Edge, ItemId>,
     contig_start: usize,
-    allowed_segments: &Vec<PathSegment>,
+    allowed_segments: &[PathSegment],
     should_merge_small_windows: bool,
 ) -> Vec<(Vec<ItemId>, usize, usize)> {
     let close_nodes = get_close_nodes(
@@ -503,7 +505,7 @@ pub fn get_edge_windows(
         ref_windows
     };
 
-    let full_windows_with_end: Vec<(Vec<(ItemId, IncludedEnds)>, usize, usize)> = ref_windows
+    let full_windows_with_end: Vec<DirectedNodeBucket> = ref_windows
         .into_iter()
         .map(|(window, start, end)| {
             (

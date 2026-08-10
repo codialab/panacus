@@ -15,6 +15,9 @@ use crate::{
 
 type Buckets = HashMap<usize, Vec<(usize, usize)>>;
 
+/// (start_coord, end_coord, list with feature ids)
+type ReferenceBucket = Vec<(usize, usize, Vec<usize>)>;
+
 #[derive(Debug)]
 pub struct CoverageMatrix {
     count_of_features: usize,
@@ -138,8 +141,12 @@ impl CoverageMatrix {
             let start_window =
                 ((position - window_size - min + 1) as f64 / slide_step as f64).ceil() as usize;
             let end_window = ((position - min) as f64 / slide_step as f64).floor() as usize;
-            for window in start_window..=end_window {
-                feature_buckets[window].push(feature_idx);
+            for window in feature_buckets
+                .iter_mut()
+                .take(end_window + 1)
+                .skip(start_window)
+            {
+                window.push(feature_idx);
             }
         }
         (min, feature_buckets)
@@ -174,8 +181,12 @@ impl CoverageMatrix {
             }
 
             // Our valid interval is now [first_window_idx, last_window_idx)
-            for window in first_window_idx..last_window_idx {
-                feature_buckets[window].push(feature_idx);
+            for window in feature_buckets
+                .iter_mut()
+                .take(last_window_idx)
+                .skip(first_window_idx)
+            {
+                window.push(feature_idx);
             }
         }
         Some((0, feature_buckets))
@@ -252,7 +263,7 @@ impl CoverageMatrix {
     ) -> impl Iterator<Item = (String, impl Iterator<Item = (usize, usize, Hist)> + '_)> + '_ {
         let bed_buckets: Option<HashMap<usize, Vec<(usize, usize)>>> =
             window_file.map(|file_path| self.get_buckets_from_bucket_file(file_path));
-        let mut all_references_buckets: Vec<(String, Vec<(usize, usize, Vec<usize>)>)> = Vec::new();
+        let mut all_references_buckets: Vec<(String, ReferenceBucket)> = Vec::new();
         for (ref_id, reference) in self.feature_positions.references.iter().enumerate() {
             let (min, feature_buckets) = match bed_buckets.as_ref() {
                 Some(b) => {

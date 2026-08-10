@@ -113,7 +113,7 @@ impl AnalysisParameter {
     /// This match has to be extended when adding a new analysis. Each analysis
     /// needs to decide, whether it needs the full matrix or whether just the
     /// hist is fine. Just using the histogram is always preferred.
-    pub fn to_analysis(self) -> Analysis {
+    pub fn into_analysis(self) -> Analysis {
         match self {
             Self::Hist {} => Analysis::HistBased(Box::new(Hist::new())),
             Self::Growth {

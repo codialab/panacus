@@ -370,7 +370,7 @@ fn get_matrix_reports(
 }
 
 fn split_analyses(analyses: Vec<AnalysisParameter>) -> (HistBasedAnalyses, MatrixBasedAnalyses) {
-    analyses.into_iter().map(|x| x.to_analysis()).fold(
+    analyses.into_iter().map(|x| x.into_analysis()).fold(
         (Vec::new(), Vec::new()),
         |(mut hists, mut matrices), item| {
             match item {

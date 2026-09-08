@@ -273,9 +273,16 @@ fn get_hist_reports(
         .into_iter()
         .filter_map(|mut x| {
             log::info!("Doing hist-analysis: {}", x.get_type());
-            let out = x.generate_report_section(&hist).ok();
-            log::info!("Finished hist-analysis: {}", x.get_type());
-            out
+            match x.generate_report_section(&hist) {
+                Ok(out) => {
+                    log::info!("Finished hist-analysis: {}", x.get_type());
+                    Some(out)
+                }
+                Err(e) => {
+                    log::error!("Error during hist-analysis {}: {}", x.get_type(), e);
+                    None
+                }
+            }
         })
         .flatten()
         .collect();
@@ -335,9 +342,16 @@ fn get_matrix_reports(
         // TODO remove all filter_maps and replace with correct error handling
         .filter_map(|mut x| {
             log::info!("Doing matrix-analysis: {}", x.get_type());
-            let out = x.generate_report_section(&matrix).ok();
-            log::info!("Finished matrix-analysis: {}", x.get_type());
-            out
+            match x.generate_report_section(&matrix) {
+                Ok(out) => {
+                    log::info!("Finished matrix-analysis: {}", x.get_type());
+                    Some(out)
+                }
+                Err(e) => {
+                    log::error!("Error during matrix-analysis {}: {}", x.get_type(), e);
+                    None
+                }
+            }
         })
         .flatten()
         .collect();
@@ -346,9 +360,16 @@ fn get_matrix_reports(
         .into_iter()
         .filter_map(|mut x| {
             log::info!("Doing hist-analysis: {}", x.get_type());
-            let out = x.generate_report_section(&hist).ok();
-            log::info!("Finished hist-analysis: {}", x.get_type());
-            out
+            match x.generate_report_section(&hist) {
+                Ok(out) => {
+                    log::info!("Finished hist-analysis: {}", x.get_type());
+                    Some(out)
+                }
+                Err(e) => {
+                    log::error!("Error during hist-analysis {}: {}", x.get_type(), e);
+                    None
+                }
+            }
         })
         .flatten()
         .collect();

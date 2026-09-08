@@ -1,6 +1,6 @@
 [package]
 name        = "panacus"
-version     = "0.5.2"
+version     = "0.5.3"
 edition     = "2018"
 rust-version= "1.70"
 
@@ -46,6 +46,21 @@ shadow-rs = "1.4.0"
 assert_cmd = "2.0.8"
 predicates = "2.1.5"
 criterion = { version = "0.5", features = ["html_reports"] }
+
+
+[lints.clippy]
+# Don't Do Bad Things That are Easy to Avoid
+rc_mutex = "warn"
+debug_assert_with_mut_call = "warn"
+iter_not_returning_iterator = "warn"
+expl_impl_clone_on_copy = "warn"
+infallible_try_from = "warn"
+dbg_macro = "warn"
+
+# Don't `allow` Your Way Around These Lints - every suppression must be
+# a deliberate #[expect(..., reason = "…")] rather than a silent #[allow]
+allow_attributes = "warn"
+allow_attributes_without_reason = "warn"
 
 [profile.release]
 codegen-units = 1

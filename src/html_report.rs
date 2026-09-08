@@ -709,12 +709,28 @@ impl ReportItem {
                 curve,
                 alpha,
             } => {
+                // Lazily load the template for bar/area plots
                 if !registry.has_template("bar") {
                     registry.register_template_string("bar", from_utf8(BAR_HBS).unwrap())?;
                 }
                 let ordinal = labels.iter().all(|l| l.parse::<f64>().is_ok());
+
+                // 'labels' are x-axis labels
+                // 'names' are 'coverage >= 1, quorum >= 10%', etc.
+                // 'values' are the concrete numbers
+                let mut ordering_of_names: Vec<usize> = (0..names.len()).collect();
+                ordering_of_names.sort_by(|a, b| match (values[*a].last(), values[*b].last()) {
+                    // If both have a value sort from biggest to smallest (thats why b and a are
+                    // swapped)
+                    (Some(a_value), Some(b_value)) => b_value
+                        .partial_cmp(a_value)
+                        .expect("Growth should not contain NaNs or infs"),
+                    _ => a.cmp(b),
+                });
+                // What vega sees as its "data"
                 let data_text = (0..labels.len())
-                    .cartesian_product(0..names.len())
+                    // All combinations of labels and names
+                    .cartesian_product(ordering_of_names)
                     .map(|(l, n)| {
                         format!(
                             "{{'label': '{}', 'name': '{}', 'value': {}}}",
@@ -722,6 +738,7 @@ impl ReportItem {
                         )
                     })
                     .join(",");
+                // Wrap data text
                 let data_text = format!("{{'values': [{}]}}", data_text);
                 let curve_text = match curve {
                     Some(c) => {

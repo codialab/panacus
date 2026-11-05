@@ -30,6 +30,7 @@ use crate::analyses::{HistBasedAnalysis, MatrixBasedAnalysis};
 use crate::analysis_parameter::{FileRun, Grouping};
 use crate::coverage_matrix::CoverageMatrix;
 use crate::file_formats::gfa_parser::{GfaParser, GraphMaskParameters};
+use crate::file_formats::hist_parser::HistParser;
 use crate::file_formats::vcf_parser::VcfParser;
 use crate::file_formats::FileFormatParser;
 use crate::hist::Hist;
@@ -408,6 +409,20 @@ fn get_file_parser(
     file: FileRun,
 ) -> anyhow::Result<(Box<dyn FileFormatParser>, Vec<AnalysisParameter>)> {
     match file {
+        FileRun::Hist {
+            file,
+            count_type,
+            analyses,
+        } => {
+            anyhow::ensure!(
+                analyses.iter().all(|analysis| matches!(
+                    analysis,
+                    AnalysisParameter::Hist {} | AnalysisParameter::Growth { .. }
+                )),
+                "Histogram input only supports histogram and growth analyses"
+            );
+            Ok((Box::new(HistParser::new(&file, count_type)?), analyses))
+        }
         FileRun::Gfa {
             graph,
             subset,

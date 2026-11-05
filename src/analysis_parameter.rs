@@ -23,6 +23,11 @@ use crate::util::CountType;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub enum FileRun {
+    Hist {
+        file: String,
+        count_type: CountType,
+        analyses: Vec<AnalysisParameter>,
+    },
     Gfa {
         graph: String,
         #[serde(default)]

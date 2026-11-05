@@ -76,7 +76,7 @@ impl CoverageMatrix {
         self.get_feature_counts()
             .into_iter()
             .zip(self.feature_lengths.iter())
-            .for_each(|(c, l)| hist.insert_feature_of_coverage_and_length(c, *l));
+            .for_each(|(c, l)| hist.insert_multiple_features_of_coverage(c, *l));
         hist
     }
 
@@ -101,7 +101,7 @@ impl CoverageMatrix {
             .for_each(|((i, c), l)| {
                 // Insert the feature only if it is not part of the reference
                 if !self.matrix.contains(i, r_idx as u64) {
-                    hist.insert_feature_of_coverage_and_length(c, *l)
+                    hist.insert_multiple_features_of_coverage(c, *l)
                 }
             });
         hist
@@ -313,7 +313,7 @@ impl CoverageMatrix {
             // TODO: this might be inefficient if windows are highly overlapping
             // (if this function is called from get_regional_hists)
             let count = self.get_count_of_feature(feature);
-            hist.insert_feature_of_coverage_and_length(count, self.feature_lengths[feature]);
+            hist.insert_multiple_features_of_coverage(count, self.feature_lengths[feature]);
         }
         hist
     }
@@ -379,7 +379,7 @@ impl CoverageMatrix {
             self.run_name.to_string(),
         );
         for (i, c) in abacus.iter().enumerate() {
-            hist.insert_feature_of_coverage_and_length(*c, self.feature_lengths[i]);
+            hist.insert_multiple_features_of_coverage(*c, self.feature_lengths[i]);
         }
         (hist, used_features)
     }

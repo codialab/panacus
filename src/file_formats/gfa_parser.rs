@@ -88,7 +88,7 @@ impl FileFormatParser for GfaParser {
             }
             if self.count_type == CountType::Bp {
                 let length = self.graph_storage.node_lens[idx];
-                hist.insert_feature_of_coverage_and_length(
+                hist.insert_multiple_features_of_coverage(
                     *feature_coverage as usize,
                     length as usize,
                 );

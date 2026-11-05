@@ -141,10 +141,10 @@ impl VcfParser {
                 }
                 match self.count_type {
                     VcfCountType::Variants => {
-                        hist.insert_feature_of_coverage_and_length(coverage, 1);
+                        hist.insert_multiple_features_of_coverage(coverage, 1);
                     }
                     VcfCountType::AltLength => {
-                        hist.insert_feature_of_coverage_and_length(coverage, variant.alt_length);
+                        hist.insert_multiple_features_of_coverage(coverage, variant.alt_length);
                     }
                 }
             }

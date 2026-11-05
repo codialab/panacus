@@ -54,6 +54,7 @@ fn growth_from_generated_histogram_matches_gfa() -> Result<(), Box<dyn std::erro
     let graph = "tests/test_files/t_groups.gfa";
     let histogram = Command::cargo_bin("panacus")?
         .arg("hist")
+        .args(["--count", "bp"])
         .arg(graph)
         .assert()
         .success()
@@ -67,7 +68,15 @@ fn growth_from_generated_histogram_matches_gfa() -> Result<(), Box<dyn std::erro
         let output = Command::cargo_bin("panacus")?
             .arg("growth")
             .arg(input)
-            .args(["--coverage", "1,2", "--quorum", "0,0.5", "--hist"])
+            .args([
+                "--coverage",
+                "1,2",
+                "--quorum",
+                "0,0.5",
+                "--hist",
+                "--count",
+                "bp",
+            ])
             .assert()
             .success()
             .get_output()

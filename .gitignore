@@ -25,3 +25,4 @@ etc/package.json
 *.json.gz
 *.zst
 **/*.vs
+tags

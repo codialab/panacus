@@ -65,6 +65,7 @@ impl Hist {
         }
     }
 
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.hist.is_empty() || self.hist.iter().all(|&v| v == 0)
     }
@@ -73,28 +74,33 @@ impl Hist {
     /// for an increase in singletons often seen in Histograms
     /// that can be a problem when fitting curves to the Growth
     /// curve / F_new curve
+    #[inline]
     pub fn correct_h1(&mut self, correction: usize) {
         self.hist[1] -= correction;
     }
 
+    #[inline]
     pub fn get_index(&self) -> impl Iterator<Item = usize> + '_ {
         0..self.hist.len()
     }
 
     /// Inserts a single feature with a given coverage into the histogram.
     /// Will panic if the coverage is bigger than the maximum coverage.
+    #[inline]
     pub fn insert_feature_of_coverage(&mut self, coverage: usize) {
-        self.hist[coverage] += 1;
-        self.count_of_features += 1;
+        self.insert_multiple_features_of_coverage(coverage, 1);
     }
 
-    pub fn insert_feature_of_coverage_and_length(&mut self, coverage: usize, length: usize) {
-        self.hist[coverage] += length;
-        self.count_of_features += length;
+    /// Inserts `amount`-number of features (or a single feature of length `amount`) with given coverage into the histogram
+    /// Will panic if the coverage is bigger than the maximum coverage.
+    pub fn insert_multiple_features_of_coverage(&mut self, coverage: usize, amount: usize) {
+        self.hist[coverage] += amount;
+        self.count_of_features += amount;
     }
 
     /// Gets the number of features that are currently inserted into
     /// the histogram (this is multiplied by the length of the feature)
+    #[inline]
     pub fn get_number_of_features(&self) -> usize {
         self.count_of_features
     }
@@ -105,18 +111,22 @@ impl Hist {
         self.hist.len() - 1
     }
 
+    #[inline]
     pub fn get_hist_values(&self) -> &[usize] {
         &self.hist
     }
 
+    #[inline]
     pub fn get_feature_type(&self) -> &str {
         &self.feature_type
     }
 
+    #[inline]
     pub fn get_run_id(&self) -> &str {
         &self.run_id
     }
 
+    #[inline]
     pub fn get_run_name(&self) -> &str {
         &self.run_name
     }

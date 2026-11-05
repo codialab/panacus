@@ -121,7 +121,7 @@ fn parse_hist<R: BufRead>(
         filename.to_string(),
     );
     for (coverage, count) in values {
-        hist.insert_feature_of_coverage_and_length(coverage, count);
+        hist.insert_multiple_features_of_coverage(coverage, count);
     }
     Ok(hist)
 }

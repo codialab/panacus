@@ -214,15 +214,17 @@ pub fn run_cli() -> Result<(), anyhow::Error> {
 
     log::info!("{:?}", instructions);
 
+    let output_format = if !shall_write_html {
+        OutputFormat::Txt
+    } else if json {
+        OutputFormat::Json
+    } else {
+        OutputFormat::Html
+    };
+
     // ride on!
     if !dry_run {
-        execute_pipeline(
-            instructions,
-            &mut out,
-            &config_content,
-            shall_write_html,
-            json,
-        )?;
+        execute_pipeline(instructions, &mut out, &config_content, output_format)?;
     } else {
         println!("{:#?}", instructions);
     }
@@ -232,13 +234,24 @@ pub fn run_cli() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+enum OutputFormat {
+    Html,
+    Txt,
+    Json,
+}
+
+enum FileFormatRun {
+    MatrixFile(Box<CoverageMatrix>, MatrixBasedAnalyses, HistBasedAnalyses),
+    HistFile(Hist, HistBasedAnalyses),
+}
+
 fn execute_pipeline<W: Write>(
     instructions: Vec<FileRun>,
     out: &mut std::io::BufWriter<W>,
     config_content: &str,
-    shall_write_html: bool,
-    json: bool,
+    output_format: OutputFormat,
 ) -> anyhow::Result<()> {
+    let mut all_runs = Vec::new();
     for file in instructions {
         let (file_parser, analyses) = get_file_parser(file)?;
         let (hist_based, matrix_based) = split_analyses(analyses);
@@ -246,30 +259,89 @@ fn execute_pipeline<W: Write>(
         if !matrix_based.is_empty() {
             let matrix = file_parser.generate_matrix();
             log::info!("Matrix generated");
-            let report = match shall_write_html {
-                true => get_matrix_reports(matrix, matrix_based, hist_based, config_content, json)?,
-                false => get_matrix_tables(matrix, matrix_based, hist_based)?,
-            };
-            writeln!(out, "{report}")?;
+            all_runs.push(FileFormatRun::MatrixFile(
+                Box::new(matrix),
+                matrix_based,
+                hist_based,
+            ));
         } else {
             let hist = file_parser.generate_hist();
             log::info!("Hist generated");
-            let report = match shall_write_html {
-                true => get_hist_reports(hist, hist_based, config_content, json)?,
-                false => get_hist_tables(hist, hist_based)?,
-            };
-            writeln!(out, "{report}")?;
+            all_runs.push(FileFormatRun::HistFile(hist, hist_based));
         }
     }
+    match output_format {
+        OutputFormat::Html => write_html_report(all_runs, out, config_content)?,
+        OutputFormat::Json => write_json_report(all_runs, out)?,
+        OutputFormat::Txt => write_txt_report(all_runs, out)?,
+    }
+    Ok(())
+}
+
+fn write_txt_report<W: Write>(
+    file_runs: Vec<FileFormatRun>,
+    out: &mut std::io::BufWriter<W>,
+    // config_content: &str, TODO: config content should also be used somehow
+) -> anyhow::Result<()> {
+    let sections: Vec<String> = file_runs
+        .into_iter()
+        .map(|r| match r {
+            FileFormatRun::MatrixFile(m, mb, hb) => get_matrix_tables(*m, mb, hb),
+            FileFormatRun::HistFile(h, hb) => get_hist_tables(h, hb),
+        })
+        .try_collect()?;
+    let report = sections.into_iter().join("\n\n\n");
+    writeln!(out, "{report}")?;
+    Ok(())
+}
+
+fn write_json_report<W: Write>(
+    file_runs: Vec<FileFormatRun>,
+    out: &mut std::io::BufWriter<W>,
+    // config_content: &str, TODO: config content should also be used somehow
+) -> anyhow::Result<()> {
+    let sections: Vec<Vec<AnalysisSection>> = file_runs
+        .into_iter()
+        .map(|r| match r {
+            FileFormatRun::MatrixFile(m, mb, hb) => get_matrix_reports(*m, mb, hb),
+            FileFormatRun::HistFile(h, hb) => get_hist_reports(h, hb),
+        })
+        .try_collect()?;
+    let sections: Vec<_> = sections.into_iter().flatten().collect();
+    let report = serde_json::to_string_pretty(&sections)?;
+    writeln!(out, "{report}")?;
+    Ok(())
+}
+
+fn write_html_report<W: Write>(
+    file_runs: Vec<FileFormatRun>,
+    out: &mut std::io::BufWriter<W>,
+    config_content: &str,
+) -> anyhow::Result<()> {
+    let sections: Vec<Vec<AnalysisSection>> = file_runs
+        .into_iter()
+        .map(|r| match r {
+            FileFormatRun::MatrixFile(m, mb, hb) => get_matrix_reports(*m, mb, hb),
+            FileFormatRun::HistFile(h, hb) => get_hist_reports(h, hb),
+        })
+        .try_collect()?;
+    let sections: Vec<_> = sections.into_iter().flatten().collect();
+    let mut registry = handlebars::Handlebars::new();
+    let report = AnalysisSection::generate_report(
+        sections,
+        &mut registry,
+        "<Placeholder Filename>",
+        config_content,
+    )?;
+    writeln!(out, "{report}")?;
+
     Ok(())
 }
 
 fn get_hist_reports(
     hist: Hist,
     hist_based: HistBasedAnalyses,
-    config_content: &str,
-    json: bool,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Vec<AnalysisSection>> {
     let reports: Vec<AnalysisSection> = hist_based
         .into_iter()
         .filter_map(|mut x| {
@@ -287,19 +359,7 @@ fn get_hist_reports(
         })
         .flatten()
         .collect();
-    let mut registry = handlebars::Handlebars::new();
-    if json {
-        let report = serde_json::to_string_pretty(&reports)?;
-        Ok(report)
-    } else {
-        let report = AnalysisSection::generate_report(
-            reports,
-            &mut registry,
-            "<Placeholder Filename>",
-            config_content,
-        )?;
-        Ok(report)
-    }
+    Ok(reports)
 }
 
 fn get_hist_tables(hist: Hist, hist_based: HistBasedAnalyses) -> anyhow::Result<String> {
@@ -335,9 +395,7 @@ fn get_matrix_reports(
     matrix: CoverageMatrix,
     matrix_based: MatrixBasedAnalyses,
     hist_based: HistBasedAnalyses,
-    config_content: &str,
-    json: bool,
-) -> anyhow::Result<String> {
+) -> anyhow::Result<Vec<AnalysisSection>> {
     let mut reports: Vec<AnalysisSection> = matrix_based
         .into_iter()
         // TODO remove all filter_maps and replace with correct error handling
@@ -375,20 +433,7 @@ fn get_matrix_reports(
         .flatten()
         .collect();
     reports.append(&mut hist_reports);
-
-    if json {
-        let report = serde_json::to_string_pretty(&reports)?;
-        Ok(report)
-    } else {
-        let mut registry = handlebars::Handlebars::new();
-        let report = AnalysisSection::generate_report(
-            reports,
-            &mut registry,
-            "<Placeholder Filename>",
-            config_content,
-        )?;
-        Ok(report)
-    }
+    Ok(reports)
 }
 
 fn split_analyses(analyses: Vec<AnalysisParameter>) -> (HistBasedAnalyses, MatrixBasedAnalyses) {

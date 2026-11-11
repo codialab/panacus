@@ -25,6 +25,7 @@ use crate::util::CountType;
 pub enum FileRun {
     Hist {
         file: String,
+        #[serde(default)]
         count_type: CountType,
         analyses: Vec<AnalysisParameter>,
     },
@@ -38,6 +39,7 @@ pub enum FileRun {
         grouping: Option<Grouping>,
         #[serde(default)]
         nice: bool,
+        #[serde(default)]
         count_type: CountType,
         analyses: Vec<AnalysisParameter>,
     },

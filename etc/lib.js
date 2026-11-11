@@ -51,10 +51,11 @@ class Hexbin {
 }
 
 class Heatmap {
-    constructor(id, name, data_set) {
+    constructor(id, name, data_set, dendrogram = null) {
         this.id = id;
         this.name = name;
         this.data_set = data_set;
+        this.dendrogram = dendrogram;
     }
 }
 

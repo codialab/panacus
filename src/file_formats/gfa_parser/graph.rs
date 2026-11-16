@@ -55,7 +55,6 @@ impl Orientation {
         }
     }
 
-    #[allow(dead_code)]
     pub fn from_lg(c: u8) -> Self {
         match c {
             b'>' => Orientation::Forward,
@@ -64,7 +63,6 @@ impl Orientation {
         }
     }
 
-    #[allow(dead_code)]
     pub fn to_lg(self) -> char {
         match self {
             Orientation::Forward => '>',
@@ -142,7 +140,6 @@ impl Edge {
         }
     }
 
-    #[allow(dead_code)]
     pub fn normalize(&self) -> Self {
         Self::canonical(self.0, self.1, self.2, self.3)
     }

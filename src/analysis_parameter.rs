@@ -20,6 +20,7 @@ use crate::analyses::table::Table;
 use crate::analyses::Analysis;
 use crate::file_formats::vcf_parser::VcfCountType;
 use crate::util::CountType;
+use crate::OutputFormat;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub enum FileRun {
@@ -61,17 +62,7 @@ pub enum FileRun {
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord, Default)]
 pub struct Configuration {
-    output: OutputOptions,
-}
-
-// Output format
-#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord, Default)]
-pub enum OutputOptions {
-    // Single html file
-    #[default]
-    Html,
-    // Single txt file
-    Txt,
+    pub output: OutputFormat,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]

@@ -13,6 +13,7 @@ use anyhow::anyhow;
 use env_logger::Builder;
 use itertools::Itertools;
 use log::LevelFilter;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::{fmt::Debug, io::Write};
 use thiserror::Error;
@@ -215,10 +216,29 @@ pub fn run_cli() -> Result<(), anyhow::Error> {
 
     log::info!("{:?}", instructions);
 
+    // Get the first config section (this needs to be done within brackets, so that we can drop the
+    // borrow on `instructions` before we need it)
+    let config = {
+        let mut iter = instructions.extract_if(.., |x| matches!(x, FileRun::Config { .. }));
+        let config = iter.next();
+        // Throw an error if there are multiple config sections
+        if iter.next().is_some() {
+            return Err(anyhow!(
+                "YAML file can only contain a single !Config section"
+            ));
+        }
+        config
+    };
+
     let output_format = if !shall_write_html {
         OutputFormat::Txt
     } else if json {
         OutputFormat::Json
+    } else if let Some(FileRun::Config {
+        config: config_content,
+    }) = config
+    {
+        config_content.output
     } else {
         OutputFormat::Html
     };
@@ -235,7 +255,11 @@ pub fn run_cli() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+#[derive(
+    Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord, Default,
+)]
 enum OutputFormat {
+    #[default]
     Html,
     Txt,
     Json,
@@ -294,11 +318,19 @@ fn write_txt_report<W: Write>(
     out: &mut std::io::BufWriter<W>,
     // config_content: &str, TODO: config content should also be used somehow
 ) -> anyhow::Result<()> {
+    let mut counter = Counter::default();
+    let is_multiple = file_runs.len() > 1
+        || file_runs.iter().any(|x| match x {
+            FileFormatRun::MatrixFile(_, mb, hb) => mb.len().max(hb.len()) > 1,
+            FileFormatRun::HistFile(_, hb) => hb.len() > 1,
+        });
     let sections: Vec<String> = file_runs
         .into_iter()
         .map(|r| match r {
-            FileFormatRun::MatrixFile(m, mb, hb) => get_matrix_tables(*m, mb, hb),
-            FileFormatRun::HistFile(h, hb) => get_hist_tables(h, hb),
+            FileFormatRun::MatrixFile(m, mb, hb) => {
+                get_matrix_tables(*m, mb, hb, is_multiple, &mut counter)
+            }
+            FileFormatRun::HistFile(h, hb) => get_hist_tables(h, hb, is_multiple, &mut counter),
         })
         .try_collect()?;
     let report = sections.into_iter().join("\n\n\n");
@@ -373,10 +405,33 @@ fn get_hist_reports(
     Ok(reports)
 }
 
-fn get_hist_tables(hist: Hist, hist_based: HistBasedAnalyses) -> anyhow::Result<String> {
+#[derive(Debug, Default)]
+struct Counter(u32);
+
+impl Counter {
+    pub fn get_new_id(&mut self) -> u32 {
+        let val = self.0;
+        self.0 += 1;
+        val
+    }
+}
+
+fn get_hist_tables(
+    hist: Hist,
+    hist_based: HistBasedAnalyses,
+    should_prepend_name: bool,
+    counter: &mut Counter,
+) -> anyhow::Result<String> {
     let reports: Vec<String> = hist_based
         .into_iter()
-        .filter_map(|mut x| x.generate_table(&hist).ok())
+        .filter_map(|mut x| {
+            let res = x.generate_table(&hist).ok();
+            if should_prepend_name {
+                res.map(|y| format!("# {}-{}\n{}", x.get_type(), counter.get_new_id(), y))
+            } else {
+                res
+            }
+        })
         .collect();
     let report = reports.into_iter().join("\n\n\n");
     Ok(report)
@@ -386,19 +441,35 @@ fn get_matrix_tables(
     matrix: CoverageMatrix,
     matrix_based: MatrixBasedAnalyses,
     hist_based: HistBasedAnalyses,
+    should_prepend_name: bool,
+    counter: &mut Counter,
 ) -> anyhow::Result<String> {
     let mut reports: Vec<String> = matrix_based
         .into_iter()
         // TODO remove all filter_maps and replace with correct error handling
-        .filter_map(|mut x| x.generate_table(&matrix).ok())
+        .filter_map(|mut x| {
+            let res = x.generate_table(&matrix).ok();
+            if should_prepend_name {
+                res.map(|y| format!("# {}-{}\n{}", x.get_type(), counter.get_new_id(), y))
+            } else {
+                res
+            }
+        })
         .collect();
     let hist = matrix.get_hist();
     let mut hist_reports: Vec<String> = hist_based
         .into_iter()
-        .filter_map(|mut x| x.generate_table(&hist).ok())
+        .filter_map(|mut x| {
+            let res = x.generate_table(&hist).ok();
+            if should_prepend_name {
+                res.map(|y| format!("#{}-{}\n{}", x.get_type(), counter.get_new_id(), y))
+            } else {
+                res
+            }
+        })
         .collect();
     reports.append(&mut hist_reports);
-    let report = reports.into_iter().join("\n\n\n");
+    let report = reports.into_iter().join("\n");
     Ok(report)
 }
 

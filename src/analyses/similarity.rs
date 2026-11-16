@@ -13,6 +13,7 @@ pub struct Similarity {
     cluster_method: ClusterMethod,
     table: Option<Vec<Vec<f32>>>,
     labels: Option<Vec<String>>,
+    dendrogram: Option<Vec<(usize, usize, f32, usize)>>,
 }
 
 impl MatrixBasedAnalysis for Similarity {
@@ -62,6 +63,7 @@ impl MatrixBasedAnalysis for Similarity {
                 x_labels: self.labels.as_ref().unwrap().clone(),
                 y_labels: self.labels.as_ref().unwrap().clone(),
                 values: self.table.as_ref().unwrap().clone(),
+                dendrogram: self.dendrogram.as_ref().unwrap().clone(),
             }],
             plot_downloads: get_default_plot_downloads(),
         }];
@@ -75,6 +77,7 @@ impl Similarity {
             cluster_method,
             table: None,
             labels: None,
+            dendrogram: None,
         }
     }
 
@@ -135,6 +138,12 @@ impl Similarity {
 
         self.table = Some(table);
         self.labels = Some(labels);
+        self.dendrogram = Some(
+            dend.steps()
+                .iter()
+                .map(|s| (s.cluster1, s.cluster2, s.dissimilarity, s.size))
+                .collect(),
+        );
     }
 }
 

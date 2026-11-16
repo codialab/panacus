@@ -453,6 +453,7 @@ pub enum ReportItem {
         x_labels: Vec<String>,
         y_labels: Vec<String>,
         values: Vec<Vec<f32>>,
+        dendrogram: Vec<(usize, usize, f32, usize)>,
     },
     Line {
         id: String,
@@ -549,6 +550,7 @@ impl ReportItem {
                 x_labels,
                 y_labels,
                 values,
+                dendrogram
             } => {
                 if !registry.has_template("heatmap") {
                     registry
@@ -564,7 +566,19 @@ impl ReportItem {
                     }
                 }
                 data_set.push_str("]}");
-                let js_object = format!("new Heatmap('{}', '{}', {})", id, name, data_set,);
+                let mut dend_js = "[".to_string();
+                for (c1, c2, dist, size) in &dendrogram {
+                    dend_js.push_str(&format!(
+                        "{{cluster1:{}, cluster2:{}, dissimilarity:{}, size:{}}},",
+                        c1, c2, dist, size
+                    ));
+                }
+                dend_js.push(']');
+
+                let js_object = format!(
+                    "new Heatmap('{}', '{}', {}, {})",
+                    id, name, data_set, dend_js
+                );
                 let max_scale = format!(
                     "{:.2}",
                     values

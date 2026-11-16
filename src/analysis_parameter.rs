@@ -20,6 +20,7 @@ use crate::analyses::table::Table;
 use crate::analyses::Analysis;
 use crate::file_formats::vcf_parser::VcfCountType;
 use crate::util::CountType;
+use crate::OutputFormat;
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]
 pub enum FileRun {
@@ -52,6 +53,16 @@ pub enum FileRun {
         exclude: Option<String>,
         analyses: Vec<AnalysisParameter>,
     },
+    // Enum variant that contains general configuration
+    Config {
+        #[serde(flatten)]
+        config: Configuration,
+    },
+}
+
+#[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord, Default)]
+pub struct Configuration {
+    pub output: OutputFormat,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq, Eq, Hash, Clone, PartialOrd, Ord)]

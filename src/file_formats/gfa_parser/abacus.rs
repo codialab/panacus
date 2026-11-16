@@ -265,7 +265,6 @@ impl GraphMask {
             .concat()
     }
 
-    #[allow(dead_code)]
     pub fn count_groups(&self) -> usize {
         HashSet::<&String>::from_iter(self.groups.values()).len()
     }

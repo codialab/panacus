@@ -1,5 +1,4 @@
 /* standard use */
-use std::io::Write;
 use std::io::{Error, ErrorKind};
 use std::str::FromStr;
 
@@ -186,12 +185,6 @@ impl Hist3D {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct Hist {
-    pub count: CountType,
-    pub coverage: Vec<usize>,
-}
-
 pub fn choose(n: usize, k: usize) -> f64 {
     let mut res: f64 = 0.0;
     if k > n {
@@ -209,23 +202,9 @@ pub fn choose(n: usize, k: usize) -> f64 {
     res
 }
 
-impl Hist {
-    #[allow(dead_code)]
-    pub fn to_tsv<W: std::io::Write>(&self, out: &mut std::io::BufWriter<W>) -> Result<(), Error> {
-        writeln!(out, "hist\t{}", self.count)?;
-        for (i, c) in self.coverage.iter().enumerate() {
-            writeln!(out, "{}\t{}", i, c)?;
-        }
-
-        Ok(())
-    }
-}
-
 pub enum RequireThreshold {
     Absolute,
     Relative,
-    #[allow(dead_code)]
-    Either,
 }
 
 pub fn parse_threshold_cli(
@@ -269,12 +248,6 @@ pub fn parse_threshold_cli(
                     &threshold_str,
                     i + 1)))?),
             RequireThreshold::Relative => Threshold::Relative(rel_val?),
-            RequireThreshold::Either =>
-        if let Ok(t) = usize::from_str(el.trim()) {
-            Threshold::Absolute(t)
-        } else {
-            Threshold::Relative(rel_val?)
-            }
             }
             );
     }

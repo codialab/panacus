@@ -347,60 +347,6 @@ fn cover_windows_with_reference_nodes(
     ref_windows
 }
 
-fn augment_windows_with_non_reference_nodes(
-    ref_nodes: &Vec<(ItemId, Orientation)>,
-    ref_windows: Vec<Window>,
-    neighbors: &HashMap<(ItemId, Orientation), HashSet<ItemId>>,
-) -> Vec<UndirectedNodeBucket> {
-    let close_nodes = get_close_nodes(ref_nodes, neighbors);
-    let windows: Vec<UndirectedNodeBucket> = ref_windows
-        .into_iter()
-        .map(|(window, start, end)| {
-            (
-                window
-                    .into_iter()
-                    .flat_map(|(ref_node, ref_orientation, ref_length, included_ends)| {
-                        match included_ends {
-                            IncludedEnds::None => vec![(ref_node, ref_length)],
-                            IncludedEnds::Back => close_nodes
-                                .get(&(ref_node, ref_orientation))
-                                .unwrap_or(&Vec::new())
-                                .iter()
-                                .map(|node| (*node, 0))
-                                .chain(iter::once((ref_node, ref_length)))
-                                .collect(),
-                            IncludedEnds::Front => close_nodes
-                                .get(&(ref_node, ref_orientation.flip()))
-                                .unwrap_or(&Vec::new())
-                                .iter()
-                                .map(|node| (*node, 0))
-                                .chain(iter::once((ref_node, ref_length)))
-                                .collect(),
-                            IncludedEnds::Both => close_nodes
-                                .get(&(ref_node, ref_orientation))
-                                .unwrap_or(&Vec::new())
-                                .iter()
-                                .map(|node| (*node, 0))
-                                .chain(
-                                    close_nodes
-                                        .get(&(ref_node, ref_orientation.flip()))
-                                        .unwrap_or(&Vec::new())
-                                        .iter()
-                                        .map(|node| (*node, 0)),
-                                )
-                                .chain(iter::once((ref_node, ref_length)))
-                                .collect(),
-                        }
-                    })
-                    .collect::<Vec<_>>(),
-                start,
-                end,
-            )
-        })
-        .collect();
-    windows
-}
-
 type Window = (
     Vec<(ItemId, Orientation, usize, IncludedEnds)>,
     usize,
@@ -430,44 +376,6 @@ fn merge_small_windows(
 }
 
 /// list of Features + covered length, start_coord, end_coord
-type UndirectedNodeBucket = (Vec<(ItemId, usize)>, usize, usize);
-
-#[allow(dead_code)]
-fn get_windows(
-    ref_nodes: &Vec<(ItemId, Orientation)>,
-    node_lens: &[u32],
-    neighbors: &HashMap<(ItemId, Orientation), HashSet<ItemId>>,
-    _log_windows: bool,
-    window_config: WindowConfig,
-) -> Vec<UndirectedNodeBucket> {
-    let WindowConfig {
-        window_size,
-        contig_start,
-        allowed_segments,
-        should_merge_small_windows,
-    } = window_config;
-    let ref_length = get_ref_length(ref_nodes, node_lens) as usize;
-
-    // Get window ranges, i.e., (start, end)-coordinates
-    let window_ranges: Vec<(usize, usize)> =
-        get_window_ranges(window_size, contig_start, ref_length, allowed_segments);
-
-    // Cover the windows with reference nodes
-    let ref_windows: Vec<Window> =
-        cover_windows_with_reference_nodes(window_ranges, ref_nodes, node_lens, contig_start);
-
-    // If the flag is set merge windows that are inside the same window
-    let ref_windows = if should_merge_small_windows {
-        merge_small_windows(ref_windows, window_size, contig_start, ref_length)
-    } else {
-        ref_windows
-    };
-
-    // Add close non-reference nodes to windows
-
-    augment_windows_with_non_reference_nodes(ref_nodes, ref_windows, neighbors)
-}
-
 type DirectedNodeBucket = (Vec<(ItemId, IncludedEnds)>, usize, usize);
 
 pub struct WindowConfig<'a> {
@@ -477,7 +385,10 @@ pub struct WindowConfig<'a> {
     should_merge_small_windows: bool,
 }
 
-#[allow(dead_code)]
+#[expect(
+    dead_code,
+    reason = "Part of legacy regional analysis. TODO: can this be removed?"
+)]
 fn get_edge_windows(
     ref_nodes: &Vec<(ItemId, Orientation)>,
     node_lens: &[u32],

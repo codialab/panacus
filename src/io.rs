@@ -1,15 +1,8 @@
-/* standard use */
+use crate::file_formats::gfa_parser::PathSegment;
+use flate2::read::MultiGzDecoder;
 use std::io::{BufRead, BufReader, Read};
 use std::io::{Error, ErrorKind};
 use std::str::{self, FromStr};
-
-/* external use */
-use flate2::read::MultiGzDecoder;
-use quick_csv::Csv;
-
-/* internal use */
-use crate::file_formats::gfa_parser::PathSegment;
-use crate::util::*;
 
 pub fn bufreader_from_compressed_gfa(gfa_file: &str) -> BufReader<Box<dyn Read + Send>> {
     log::info!("loading graph from {}", &gfa_file);
@@ -139,39 +132,6 @@ pub fn parse_groups<R: Read>(data: &mut BufReader<R>) -> Result<Vec<(PathSegment
 
         i += 1;
         buf.clear();
-    }
-
-    Ok(res)
-}
-
-#[allow(dead_code)]
-pub fn parse_threshold_file<R: Read>(data: &mut BufReader<R>) -> Result<Vec<Threshold>, Error> {
-    let mut res = Vec::new();
-
-    let reader = Csv::from_reader(data)
-        .delimiter(b'\t')
-        .flexible(true)
-        .has_header(false);
-    for (i, row) in reader.enumerate() {
-        let row = row.unwrap();
-        let mut row_it = row.bytes_columns();
-        if let Some(col) = row_it.next() {
-            let threshold_str = str::from_utf8(col).unwrap();
-            if let Ok(t) = usize::from_str(threshold_str) {
-                res.push(Threshold::Absolute(t));
-            } else if let Ok(t) = f64::from_str(threshold_str) {
-                res.push(Threshold::Relative(t));
-            } else {
-                return Err(Error::new(
-                    ErrorKind::InvalidData,
-                    &format!(
-                        "threshold \"{}\" (line {}) is neither an integer nor a float",
-                        &threshold_str,
-                        i + 1
-                    )[..],
-                ));
-            }
-        }
     }
 
     Ok(res)

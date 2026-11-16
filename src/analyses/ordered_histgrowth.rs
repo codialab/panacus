@@ -43,9 +43,8 @@ impl MatrixBasedAnalysis for OrderedHistgrowth {
             "quorum".to_string(),
         ]];
         header_cols.extend(
-            std::iter::repeat("ordered-growth")
-                .take(m)
-                .zip(std::iter::repeat(matrix.get_feature_type()).take(m))
+            std::iter::repeat_n("ordered-growth", m)
+                .zip(std::iter::repeat_n(matrix.get_feature_type(), m))
                 .zip(inner.hist_aux.coverage.iter())
                 .zip(&inner.hist_aux.quorum)
                 .map(|(((p, t), c), q)| {

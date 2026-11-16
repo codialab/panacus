@@ -9,12 +9,13 @@ mod html_report;
 mod io;
 mod util;
 
+use anyhow::anyhow;
 use env_logger::Builder;
 use itertools::Itertools;
 use log::LevelFilter;
+use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::{fmt::Debug, io::Write};
-use thiserror::Error;
 
 use analyses::Analysis;
 use analysis_parameter::AnalysisParameter;
@@ -34,6 +35,7 @@ use crate::file_formats::hist_parser::HistParser;
 use crate::file_formats::vcf_parser::VcfParser;
 use crate::file_formats::FileFormatParser;
 use crate::hist::Hist;
+use crate::util::Counter;
 
 shadow!(build);
 
@@ -214,10 +216,29 @@ pub fn run_cli() -> Result<(), anyhow::Error> {
 
     log::info!("{:?}", instructions);
 
+    // Get the first config section (this needs to be done within brackets, so that we can drop the
+    // borrow on `instructions` before we need it)
+    let config = {
+        let mut iter = instructions.extract_if(.., |x| matches!(x, FileRun::Config { .. }));
+        let config = iter.next();
+        // Throw an error if there are multiple config sections
+        if iter.next().is_some() {
+            return Err(anyhow!(
+                "YAML file can only contain a single !Config section"
+            ));
+        }
+        config
+    };
+
     let output_format = if !shall_write_html {
         OutputFormat::Txt
     } else if json {
         OutputFormat::Json
+    } else if let Some(FileRun::Config {
+        config: config_content,
+    }) = config
+    {
+        config_content.output
     } else {
         OutputFormat::Html
     };
@@ -234,7 +255,11 @@ pub fn run_cli() -> Result<(), anyhow::Error> {
     Ok(())
 }
 
+#[derive(
+    Debug, Serialize, Deserialize, PartialEq, Eq, Hash, Clone, Copy, PartialOrd, Ord, Default,
+)]
 enum OutputFormat {
+    #[default]
     Html,
     Txt,
     Json,
@@ -251,8 +276,18 @@ fn execute_pipeline<W: Write>(
     config_content: &str,
     output_format: OutputFormat,
 ) -> anyhow::Result<()> {
+    let mut configuration = None;
     let mut all_runs = Vec::new();
     for file in instructions {
+        if let FileRun::Config { config } = file {
+            if configuration.is_some() {
+                return Err(anyhow!(
+                    "YAML file can only contain a single !Config section"
+                ));
+            }
+            configuration = Some(config);
+            continue;
+        }
         let (file_parser, analyses) = get_file_parser(file)?;
         let (hist_based, matrix_based) = split_analyses(analyses);
         log::info!("File parser generated");
@@ -283,11 +318,19 @@ fn write_txt_report<W: Write>(
     out: &mut std::io::BufWriter<W>,
     // config_content: &str, TODO: config content should also be used somehow
 ) -> anyhow::Result<()> {
+    let mut counter = Counter::default();
+    let is_multiple = file_runs.len() > 1
+        || file_runs.iter().any(|x| match x {
+            FileFormatRun::MatrixFile(_, mb, hb) => mb.len().max(hb.len()) > 1,
+            FileFormatRun::HistFile(_, hb) => hb.len() > 1,
+        });
     let sections: Vec<String> = file_runs
         .into_iter()
         .map(|r| match r {
-            FileFormatRun::MatrixFile(m, mb, hb) => get_matrix_tables(*m, mb, hb),
-            FileFormatRun::HistFile(h, hb) => get_hist_tables(h, hb),
+            FileFormatRun::MatrixFile(m, mb, hb) => {
+                get_matrix_tables(*m, mb, hb, is_multiple, &mut counter)
+            }
+            FileFormatRun::HistFile(h, hb) => get_hist_tables(h, hb, is_multiple, &mut counter),
         })
         .try_collect()?;
     let report = sections.into_iter().join("\n\n\n");
@@ -344,50 +387,72 @@ fn get_hist_reports(
 ) -> anyhow::Result<Vec<AnalysisSection>> {
     let reports: Vec<AnalysisSection> = hist_based
         .into_iter()
-        .filter_map(|mut x| {
+        .map(|mut x| {
             log::info!("Doing hist-analysis: {}", x.get_type());
-            match x.generate_report_section(&hist) {
-                Ok(out) => {
-                    log::info!("Finished hist-analysis: {}", x.get_type());
-                    Some(out)
-                }
-                Err(e) => {
-                    log::error!("Error during hist-analysis {}: {}", x.get_type(), e);
-                    None
-                }
-            }
+            let out = x.generate_report_section(&hist)?;
+            log::info!("Finished hist-analysis: {}", x.get_type());
+            Ok(out)
         })
-        .flatten()
-        .collect();
+        .flatten_ok()
+        .collect::<anyhow::Result<_>>()?;
     Ok(reports)
 }
 
-fn get_hist_tables(hist: Hist, hist_based: HistBasedAnalyses) -> anyhow::Result<String> {
+fn get_hist_tables(
+    hist: Hist,
+    hist_based: HistBasedAnalyses,
+    should_prepend_name: bool,
+    counter: &mut Counter,
+) -> anyhow::Result<String> {
     let reports: Vec<String> = hist_based
         .into_iter()
-        .filter_map(|mut x| x.generate_table(&hist).ok())
-        .collect();
+        .map(|mut x| {
+            let mut res = x.generate_table(&hist)?;
+            if should_prepend_name {
+                prepend_name(&mut res, &x.get_type(), counter);
+            }
+            Ok(res)
+        })
+        .collect::<anyhow::Result<_>>()?;
     let report = reports.into_iter().join("\n\n\n");
     Ok(report)
+}
+
+fn prepend_name(object: &mut String, analysis_type: &str, counter: &mut Counter) {
+    let name = format!("# {}-{}\n", analysis_type, counter.get_new_id());
+    object.insert_str(0, &name);
 }
 
 fn get_matrix_tables(
     matrix: CoverageMatrix,
     matrix_based: MatrixBasedAnalyses,
     hist_based: HistBasedAnalyses,
+    should_prepend_name: bool,
+    counter: &mut Counter,
 ) -> anyhow::Result<String> {
     let mut reports: Vec<String> = matrix_based
         .into_iter()
-        // TODO remove all filter_maps and replace with correct error handling
-        .filter_map(|mut x| x.generate_table(&matrix).ok())
-        .collect();
+        .map(|mut x| {
+            let mut res = x.generate_table(&matrix)?;
+            if should_prepend_name {
+                prepend_name(&mut res, &x.get_type(), counter);
+            }
+            Ok(res)
+        })
+        .collect::<anyhow::Result<_>>()?;
     let hist = matrix.get_hist();
     let mut hist_reports: Vec<String> = hist_based
         .into_iter()
-        .filter_map(|mut x| x.generate_table(&hist).ok())
-        .collect();
+        .map(|mut x| {
+            let mut res = x.generate_table(&hist)?;
+            if should_prepend_name {
+                prepend_name(&mut res, &x.get_type(), counter);
+            }
+            Ok(res)
+        })
+        .collect::<anyhow::Result<_>>()?;
     reports.append(&mut hist_reports);
-    let report = reports.into_iter().join("\n\n\n");
+    let report = reports.into_iter().join("\n");
     Ok(report)
 }
 
@@ -398,40 +463,25 @@ fn get_matrix_reports(
 ) -> anyhow::Result<Vec<AnalysisSection>> {
     let mut reports: Vec<AnalysisSection> = matrix_based
         .into_iter()
-        // TODO remove all filter_maps and replace with correct error handling
-        .filter_map(|mut x| {
+        .map(|mut x| {
             log::info!("Doing matrix-analysis: {}", x.get_type());
-            match x.generate_report_section(&matrix) {
-                Ok(out) => {
-                    log::info!("Finished matrix-analysis: {}", x.get_type());
-                    Some(out)
-                }
-                Err(e) => {
-                    log::error!("Error during matrix-analysis {}: {}", x.get_type(), e);
-                    None
-                }
-            }
+            let out = x.generate_report_section(&matrix)?;
+            log::info!("Finished matrix-analysis: {}", x.get_type());
+            Ok(out)
         })
-        .flatten()
-        .collect();
+        .flatten_ok()
+        .collect::<anyhow::Result<_>>()?;
     let hist = matrix.get_hist();
     let mut hist_reports: Vec<AnalysisSection> = hist_based
         .into_iter()
-        .filter_map(|mut x| {
+        .map(|mut x| {
             log::info!("Doing hist-analysis: {}", x.get_type());
-            match x.generate_report_section(&hist) {
-                Ok(out) => {
-                    log::info!("Finished hist-analysis: {}", x.get_type());
-                    Some(out)
-                }
-                Err(e) => {
-                    log::error!("Error during hist-analysis {}: {}", x.get_type(), e);
-                    None
-                }
-            }
+            let out = x.generate_report_section(&hist)?;
+            log::info!("Finished hist-analysis: {}", x.get_type());
+            Ok(out)
         })
-        .flatten()
-        .collect();
+        .flatten_ok()
+        .collect::<anyhow::Result<_>>()?;
     reports.append(&mut hist_reports);
     Ok(reports)
 }
@@ -517,11 +567,26 @@ fn get_file_parser(
             )?),
             analyses,
         )),
+        FileRun::Config { .. } => Err(anyhow!(
+            "Cannot create a valid file parser from a configuration"
+        )),
     }
 }
 
-#[derive(Error, Debug)]
-pub enum ConfigParseError {
-    #[error("no config block with name {name} was found")]
-    NameNotFound { name: String },
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prepend_name() {
+        let mut text = "ABC".to_string();
+        let copy = text.clone();
+        let mut c = Counter::default();
+        prepend_name(&mut text, "HIST", &mut c);
+        assert!(text.len() > copy.len());
+        let diff = (text.len() - copy.len()) as usize;
+        assert!(copy[..] == text[diff..]);
+        assert!(text.starts_with('#'));
+        assert!(text[..diff].ends_with('\n'));
+    }
 }

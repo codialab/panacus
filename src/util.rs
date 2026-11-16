@@ -63,6 +63,17 @@ impl fmt::Display for CountType {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct Counter(u32);
+
+impl Counter {
+    pub fn get_new_id(&mut self) -> u32 {
+        let val = self.0;
+        self.0 += 1;
+        val
+    }
+}
+
 pub fn get_default_plot_downloads() -> Vec<(String, String)> {
     vec![
         ("png".to_string(), "Download as png".to_string()),
@@ -480,5 +491,13 @@ mod tests {
         );
         ic.add(ItemId(0), 14, 17);
         assert_eq!(ic.map.get(&ItemId(0)), Some(&vec![(0, 12), (13, 20)]));
+    }
+
+    #[test]
+    fn test_counter() {
+        let mut c = Counter::default();
+        assert_eq!(c.0, 0);
+        assert_eq!(c.get_new_id(), 0);
+        assert_eq!(c.0, 1);
     }
 }

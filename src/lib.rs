@@ -16,7 +16,6 @@ use log::LevelFilter;
 use serde::{Deserialize, Serialize};
 use std::io::Read;
 use std::{fmt::Debug, io::Write};
-use thiserror::Error;
 
 use analyses::Analysis;
 use analysis_parameter::AnalysisParameter;
@@ -36,6 +35,7 @@ use crate::file_formats::hist_parser::HistParser;
 use crate::file_formats::vcf_parser::VcfParser;
 use crate::file_formats::FileFormatParser;
 use crate::hist::Hist;
+use crate::util::Counter;
 
 shadow!(build);
 
@@ -387,33 +387,15 @@ fn get_hist_reports(
 ) -> anyhow::Result<Vec<AnalysisSection>> {
     let reports: Vec<AnalysisSection> = hist_based
         .into_iter()
-        .filter_map(|mut x| {
+        .map(|mut x| {
             log::info!("Doing hist-analysis: {}", x.get_type());
-            match x.generate_report_section(&hist) {
-                Ok(out) => {
-                    log::info!("Finished hist-analysis: {}", x.get_type());
-                    Some(out)
-                }
-                Err(e) => {
-                    log::error!("Error during hist-analysis {}: {}", x.get_type(), e);
-                    None
-                }
-            }
+            let out = x.generate_report_section(&hist)?;
+            log::info!("Finished hist-analysis: {}", x.get_type());
+            Ok(out)
         })
-        .flatten()
-        .collect();
+        .flatten_ok()
+        .collect::<anyhow::Result<_>>()?;
     Ok(reports)
-}
-
-#[derive(Debug, Default)]
-struct Counter(u32);
-
-impl Counter {
-    pub fn get_new_id(&mut self) -> u32 {
-        let val = self.0;
-        self.0 += 1;
-        val
-    }
 }
 
 fn get_hist_tables(
@@ -424,17 +406,21 @@ fn get_hist_tables(
 ) -> anyhow::Result<String> {
     let reports: Vec<String> = hist_based
         .into_iter()
-        .filter_map(|mut x| {
-            let res = x.generate_table(&hist).ok();
+        .map(|mut x| {
+            let mut res = x.generate_table(&hist)?;
             if should_prepend_name {
-                res.map(|y| format!("# {}-{}\n{}", x.get_type(), counter.get_new_id(), y))
-            } else {
-                res
+                prepend_name(&mut res, &x.get_type(), counter);
             }
+            Ok(res)
         })
-        .collect();
+        .collect::<anyhow::Result<_>>()?;
     let report = reports.into_iter().join("\n\n\n");
     Ok(report)
+}
+
+fn prepend_name(object: &mut String, analysis_type: &str, counter: &mut Counter) {
+    let name = format!("# {}-{}\n", analysis_type, counter.get_new_id());
+    object.insert_str(0, &name);
 }
 
 fn get_matrix_tables(
@@ -446,28 +432,25 @@ fn get_matrix_tables(
 ) -> anyhow::Result<String> {
     let mut reports: Vec<String> = matrix_based
         .into_iter()
-        // TODO remove all filter_maps and replace with correct error handling
-        .filter_map(|mut x| {
-            let res = x.generate_table(&matrix).ok();
+        .map(|mut x| {
+            let mut res = x.generate_table(&matrix)?;
             if should_prepend_name {
-                res.map(|y| format!("# {}-{}\n{}", x.get_type(), counter.get_new_id(), y))
-            } else {
-                res
+                prepend_name(&mut res, &x.get_type(), counter);
             }
+            Ok(res)
         })
-        .collect();
+        .collect::<anyhow::Result<_>>()?;
     let hist = matrix.get_hist();
     let mut hist_reports: Vec<String> = hist_based
         .into_iter()
-        .filter_map(|mut x| {
-            let res = x.generate_table(&hist).ok();
+        .map(|mut x| {
+            let mut res = x.generate_table(&hist)?;
             if should_prepend_name {
-                res.map(|y| format!("#{}-{}\n{}", x.get_type(), counter.get_new_id(), y))
-            } else {
-                res
+                prepend_name(&mut res, &x.get_type(), counter);
             }
+            Ok(res)
         })
-        .collect();
+        .collect::<anyhow::Result<_>>()?;
     reports.append(&mut hist_reports);
     let report = reports.into_iter().join("\n");
     Ok(report)
@@ -480,40 +463,25 @@ fn get_matrix_reports(
 ) -> anyhow::Result<Vec<AnalysisSection>> {
     let mut reports: Vec<AnalysisSection> = matrix_based
         .into_iter()
-        // TODO remove all filter_maps and replace with correct error handling
-        .filter_map(|mut x| {
+        .map(|mut x| {
             log::info!("Doing matrix-analysis: {}", x.get_type());
-            match x.generate_report_section(&matrix) {
-                Ok(out) => {
-                    log::info!("Finished matrix-analysis: {}", x.get_type());
-                    Some(out)
-                }
-                Err(e) => {
-                    log::error!("Error during matrix-analysis {}: {}", x.get_type(), e);
-                    None
-                }
-            }
+            let out = x.generate_report_section(&matrix)?;
+            log::info!("Finished matrix-analysis: {}", x.get_type());
+            Ok(out)
         })
-        .flatten()
-        .collect();
+        .flatten_ok()
+        .collect::<anyhow::Result<_>>()?;
     let hist = matrix.get_hist();
     let mut hist_reports: Vec<AnalysisSection> = hist_based
         .into_iter()
-        .filter_map(|mut x| {
+        .map(|mut x| {
             log::info!("Doing hist-analysis: {}", x.get_type());
-            match x.generate_report_section(&hist) {
-                Ok(out) => {
-                    log::info!("Finished hist-analysis: {}", x.get_type());
-                    Some(out)
-                }
-                Err(e) => {
-                    log::error!("Error during hist-analysis {}: {}", x.get_type(), e);
-                    None
-                }
-            }
+            let out = x.generate_report_section(&hist)?;
+            log::info!("Finished hist-analysis: {}", x.get_type());
+            Ok(out)
         })
-        .flatten()
-        .collect();
+        .flatten_ok()
+        .collect::<anyhow::Result<_>>()?;
     reports.append(&mut hist_reports);
     Ok(reports)
 }
@@ -605,8 +573,20 @@ fn get_file_parser(
     }
 }
 
-#[derive(Error, Debug)]
-pub enum ConfigParseError {
-    #[error("no config block with name {name} was found")]
-    NameNotFound { name: String },
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_prepend_name() {
+        let mut text = "ABC".to_string();
+        let copy = text.clone();
+        let mut c = Counter::default();
+        prepend_name(&mut text, "HIST", &mut c);
+        assert!(text.len() > copy.len());
+        let diff = (text.len() - copy.len()) as usize;
+        assert!(copy[..] == text[diff..]);
+        assert!(text.starts_with('#'));
+        assert!(text[..diff].ends_with('\n'));
+    }
 }

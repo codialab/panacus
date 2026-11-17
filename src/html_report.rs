@@ -550,7 +550,7 @@ impl ReportItem {
                 x_labels,
                 y_labels,
                 values,
-                dendrogram
+                dendrogram,
             } => {
                 if !registry.has_template("heatmap") {
                     registry

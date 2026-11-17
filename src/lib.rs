@@ -581,7 +581,7 @@ mod tests {
         let mut c = Counter::default();
         prepend_name(&mut text, "HIST", &mut c);
         assert!(text.len() > copy.len());
-        let diff = (text.len() - copy.len()) as usize;
+        let diff = text.len() - copy.len();
         assert!(copy[..] == text[diff..]);
         assert!(text.starts_with('#'));
         assert!(text[..diff].ends_with('\n'));

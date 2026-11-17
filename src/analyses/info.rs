@@ -17,8 +17,8 @@ impl MatrixBasedAnalysis for Info {
             "# {}\n",
             std::env::args().collect::<Vec<String>>().join(" ")
         );
-        res.push_str("# Warning! This table is a multi-table, i.e. it might contain multiple tables concatenated together. They always have the form: <table-name>\t<key>\t<value>");
-        res.push_str("table-name\tkey\tvalue");
+        res.push_str("# Warning! This table is a multi-table, i.e. it might contain multiple tables concatenated together. They always have the form: <table-name>\t<key>\t<value>\n");
+        res.push_str("table-name\tkey\tvalue\n");
         res.push_str(matrix.get_file_info().to_string().as_str());
         Ok(res)
     }

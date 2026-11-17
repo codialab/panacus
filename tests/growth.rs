@@ -114,20 +114,14 @@ fn growth_rejects_invalid_tsv_and_gfa_only_options() -> Result<(), Box<dyn std::
     Ok(())
 }
 
-#[ignore]
 #[test]
 fn growth_html_gets_written_successfully() -> Result<(), Box<dyn std::error::Error>> {
     let mut cmd = Command::cargo_bin("panacus")?;
 
-    cmd.arg("growth")
-        .arg("tests/test_files/t_groups.hist.tsv")
-        .arg("-o")
-        .arg("html");
+    cmd.arg("report").arg("tests/test_files/growth.yaml");
     cmd.assert()
         .success()
-        .stdout(predicate::str::contains(
-            "<canvas id=\"chart-bar-pan-growth-node\"></canvas>",
-        ))
-        .stdout(predicate::str::contains("panacus\thist\tgrowth"));
+        .stdout(predicate::str::contains("<div id=\"chart-bar-pan-growth"))
+        .stdout(predicate::str::contains("panacus\tgrowth"));
     Ok(())
 }

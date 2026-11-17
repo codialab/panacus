@@ -86,6 +86,10 @@ impl Similarity {
         let mut labels = matrix.get_path_names().clone();
         let group_count = labels.len();
 
+        if group_count > 100 {
+            log::warn!("Running with more than 100 samples/haplotypes/groups. The similarity plot may take a long time to calculate/render or may be unreadable!");
+        }
+
         let tuples: Vec<(_, _)> = r.iter().copied().tuple_windows().collect();
 
         // We can use a matrix as nearly all paths will share at least one feature with every
@@ -102,7 +106,6 @@ impl Similarity {
                 }
             }
         }
-        log::info!("Path lengths: {:?}", path_lens);
 
         let mut table: Vec<Vec<f32>> = vec![vec![0.0; group_count]; group_count];
         for i in 0..group_count {

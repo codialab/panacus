@@ -168,23 +168,20 @@ pub fn run_cli() -> Result<(), anyhow::Error> {
         return Ok(());
     }
 
-    if let Some(report) = commands::report::get_instructions(&args) {
+    if let Some(contents) = commands::report::get_instructions(&args) {
+        let (report, config) = contents?;
         shall_write_html = true;
         if let Some(report_matches) = args.subcommand_matches("report") {
             dry_run = report_matches.get_flag("dry_run");
             json = report_matches.get_flag("json");
-            let config = report_matches
-                .get_one::<String>("yaml_file")
-                .expect("Contains required yaml config")
-                .to_owned();
             let f = File::open(config)?;
             let mut reader = BufReader::new(f);
             config_content = String::new();
             reader.read_to_string(&mut config_content)?;
             config_content.push_str("\n---------------------\n");
-            config_content.push_str(serde_yaml::to_string(&report.as_ref().unwrap())?.as_str());
+            config_content.push_str(serde_yaml::to_string(&report)?.as_str());
         }
-        instructions.extend(report?);
+        instructions.extend(report);
     }
     if let Some(hist) = commands::hist::get_instructions(&args) {
         instructions.extend(hist?);

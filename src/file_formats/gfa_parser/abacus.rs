@@ -730,11 +730,7 @@ mod tests {
         let mut f = NamedTempFile::new()?;
         writeln!(f, "{}", text)?;
         let msg = "Could not get path as &str";
-        let file_name = f
-            .path()
-            .to_str()
-            .ok_or(Error::new(ErrorKind::Other, msg))?
-            .to_string();
+        let file_name = f.path().to_str().ok_or(Error::other(msg))?.to_string();
         Ok((f, file_name))
     }
 

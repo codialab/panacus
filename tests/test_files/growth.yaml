@@ -1,0 +1,6 @@
+- !Gfa
+  graph: tests/test_files/t_groups.gfa
+  analyses:
+    - !Growth
+- !Config
+  output: Html
